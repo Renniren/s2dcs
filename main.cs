@@ -18,51 +18,23 @@ class S2GameEntry
         
         Actor actor = Actor.Create();
         actor.name = "Cool Name";
-        Component.Add<ComponentTest>(actor);
-        Component.Get<ComponentTest>(actor).test();
+        SpriteRenderer sr = Component.Add<SpriteRenderer>(actor);
+
+        sr.sprite = new S2Sprite(Internal.GetCWD() + 
+            Constants.TexturesPath + "squareSmall.png", 2);
 
         while (Internal.context.MainWindow.IsOpen)
         {
             Internal.context.MainWindow.DispatchEvents();
+
+            actor.position = Internal.context.MainWindow.DefaultView.Center;
             Internal.context.MainWindow.Clear();
+            actor.scale = new Vector2(1, 1);
 
             UpdateManager.UpdateEngine();
 
-
             Internal.context.MainWindow.Display();
+
         }
     }
 }
-
-class S2EngineEntry
-{
-    static void Main(string[] args)
-    {
-        Console.WriteLine(Internal.GetCWD());
-        Console.WriteLine("Hello World!");
-        Internal.CreateContext();
-
-        Internal.context.MainWindow.Closed += (sender, e) =>
-        {
-            Internal.context.MainWindow.Close();
-        };
-
-        
-        Actor actor = Actor.Create();
-        actor.name = "Cool Name";
-        Component.Add<ComponentTest>(actor);
-        Component.Get<ComponentTest>(actor).test();
-
-        while (Internal.context.MainWindow.IsOpen)
-        {
-            Internal.context.MainWindow.DispatchEvents();
-            Internal.context.MainWindow.Clear();
-
-            UpdateManager.UpdateEngine();
-
-
-            Internal.context.MainWindow.Display();
-        }
-    }
-}
-

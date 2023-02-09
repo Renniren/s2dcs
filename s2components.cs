@@ -49,7 +49,8 @@ namespace S2DComponents
 
 	public class SpriteRenderer : Component
     {
-		public S2Sprite? sprite;
+		public S2Sprite sprite;
+		public DrawMode drawMode = DrawMode.WhenLevelActive;
 
 		public SpriteRenderer()
         {
@@ -60,6 +61,10 @@ namespace S2DComponents
         {
 			if (sprite == null) return;
 
+			sprite.SetPosition(actor.position);
+			sprite.SetRotation(actor.rotation);
+			sprite.SetScale(actor.scale);
+			sprite.Draw();
         }
     }
 }

@@ -89,8 +89,9 @@ namespace S2DCore
 
     public class SceneManager
 	{
-		public List<SceneInstance> ActiveLevels = new();
-		public SceneInstance CurrentScene;
+		public static List<SceneInstance> ActiveLevels = new();
+		public static SceneInstance CurrentScene;
+		public static SceneInstance DestroyedObjectLevel;
     }
 
 	public static class S2Random
@@ -110,7 +111,9 @@ namespace S2DCore
 
     public static class Constants
 	{
+		public static float SpriteScale = 64;
 		public static int NullTextureID = -1;
+
 		public static string ResourcesPath = "\\resources\\";
 		public static string TexturesPath = ResourcesPath + "\\textures\\";
 		public static string SoundsPath = ResourcesPath + "\\sounds\\";
@@ -122,7 +125,7 @@ namespace S2DCore
 		public string WindowName = "game";
 	}
 
-	public struct S2Sprite
+	public class S2Sprite
 	{
 		public string path;
 		public int id;
@@ -131,13 +134,18 @@ namespace S2DCore
 		public Texture spriteTexture;
 		public Sprite sprite;
 
+		
+
 		public S2Sprite(string path, int id)
 		{
 			this.path = path;
 			this.id = id;
-			this.sprite = new Sprite();
+			
 			spriteTexture = new Texture(path);
-			sprite.Texture = spriteTexture;
+			
+			this.sprite = new Sprite(spriteTexture);
+
+			SetScale(Vector2.one);
 			offset = Vector2.zero;
 		}
 
@@ -153,7 +161,9 @@ namespace S2DCore
 
 		public void SetScale(Vector2 scale)
         {
-			sprite.Scale = scale;
+			sprite.Scale = new Vector2f(
+			scale.x / sprite.GetLocalBounds().Width,
+			scale.y / sprite.GetLocalBounds().Height) * Constants.SpriteScale;
 		}
 
 		public void Draw()
@@ -164,8 +174,9 @@ namespace S2DCore
 
 	public struct Vector2
 	{
-		float x, y;
+		public float x, y;
 		public static Vector2 zero = new Vector2(0, 0);
+		public static Vector2 one = new Vector2(1, 1);
 
 		static float sqrt(float num)
 		{
@@ -223,25 +234,25 @@ namespace S2DCore
 		#endregion
 
 		#region Constructors
-		Vector2(float x = 0, float y = 0)
+		public Vector2(float x = 0, float y = 0)
 		{
-			this.x = 0;
-			this.y = 0;
+			this.x = x;
+			this.y = y;
 		}
 
-		Vector2(Vector2 d)
+		public Vector2(Vector2 d)
 		{
 			this.x = d.x;
 			this.y = d.y;
 		}
 
-		Vector2(Vector2f d)
+		public Vector2(Vector2f d)
 		{
 			this.x = d.X;
 			this.y = d.Y;
 		}
 
-		Vector2(Vec2 d)
+		public Vector2(Vec2 d)
 		{
 			this.x = d.X;
 			this.y = d.Y;
@@ -297,14 +308,12 @@ namespace S2DCore
 		public bool active;
 		public string name = "New Actor";
 		public Vector2 
-			position, scale;
+			position, scale = Vector2.one;
 
 		public float rotation = 0;
 		public int instanceID;
-		public SceneInstance? level;
-
+		public SceneInstance? scene;
 		public UpdateMode updateMode = UpdateMode.WhenLevelActive;
-		public DrawMode drawMode = DrawMode.WhenLevelActive;
 
 		public int layer;
 		public List<string> Tags;
@@ -316,13 +325,18 @@ namespace S2DCore
 			return actor;
         }
 
+		public void SetScene(SceneInstance destination)
+        {
+			scene = destination;
+        }
+
 		public void Destroy()
         {
 
         }
 	}
 
-	public abstract class Component
+	public class Component
     {
 		public Actor actor;
 		public int intanceID;
@@ -341,7 +355,7 @@ namespace S2DCore
 			T cmp = null;
             for (int i = 0; i < UpdateManager.ActiveComponents.Count; i++)
             {
-				cmp = (T?)UpdateManager.ActiveComponents[i];
+				cmp = UpdateManager.ActiveComponents[i] as T;
 				if (cmp.GetType() == typeof(T))
                 {
 					if (cmp.actor == from)
@@ -353,6 +367,25 @@ namespace S2DCore
 
 			return null;
         }
+
+		public static void TryGet<T>(Actor from, out T? v) where T :  Component
+        {
+            for (int i = 0; i < UpdateManager.ActiveComponents.Count; i++)
+            {
+				if (UpdateManager.ActiveComponents[i].GetType() == typeof(T))
+                {
+					if (UpdateManager.ActiveComponents[i].actor == from)
+                    {
+						v = (T?)UpdateManager.ActiveComponents[i];
+						return;
+					}
+                }
+            }
+
+			v = null;
+        }
+
+
 
 		public void InitializeComponent(Component cmp)
         {
@@ -374,7 +407,10 @@ namespace S2DCore
 
         }
 
-		public abstract void Update();
+		public virtual void Update()
+        {
+
+        }
 
 		public virtual void PhysUpdate()
         {
@@ -388,45 +424,37 @@ namespace S2DCore
         #endregion
     }
 
-
-
     public static class UpdateManager
     {
 		public static List<Component> ActiveComponents = new();
 		public static List<Actor> ActiveActors = new();
 
-
 		public static void UpdateEngine()
 		{
 			Component cmp = null;
-            for (int i = 0; i < ActiveComponents.Count; i++)
-            {
-				cmp = ActiveComponents[i];
-				if (cmp == null) continue;
-				if (!cmp.enabled) continue;
-				if (!cmp.actor.active) continue;
-
-				cmp.PreUpdate();
-			}
-
 			for (int i = 0; i < ActiveComponents.Count; i++)
             {
 				cmp = ActiveComponents[i];
 				if (cmp == null) continue;
 				if (!cmp.enabled) continue;
 				if (!cmp.actor.active) continue;
+				switch(cmp.actor.updateMode)
+                {
+					case UpdateMode.Always:
+						cmp.PreUpdate();
+						cmp.Update();
+						cmp.LateUpdate();
+						break;
 
-				cmp.Update();
-            }
-
-			for (int i = 0; i < ActiveComponents.Count; i++)
-            {
-				cmp = ActiveComponents[i];
-				if (cmp == null) continue;
-				if (!cmp.enabled) continue;
-				if (!cmp.actor.active) continue;
-
-				cmp.LateUpdate();
+					case UpdateMode.WhenLevelActive:
+						if(SceneManager.CurrentScene == cmp.actor.scene)
+                        {
+							cmp.PreUpdate();
+							cmp.Update();
+							cmp.LateUpdate();
+						}
+						break;
+                }
             }
 		}
 	}
