@@ -19,13 +19,13 @@ using Box2DX.Dynamics;
 using Math = System.Math;
 
 
-namespace S2DInternal
+namespace S2DCore
 {
 	public static class Internal
 	{
 		public static S2DContext? context;
 
-		public static void s2log(object v)
+		public static void Log(object v)
 		{
 			Console.WriteLine(v);
 		}
@@ -45,63 +45,127 @@ namespace S2DInternal
 				return true;
 			}
 
+			if (!Directory.Exists(GetCWD() + Constants.ResourcesPath))
+            {
+
+            }
+
 			return false;
-		}
-
-		public struct S2Sprite
-		{
-			public string path;
-			public Sprite sprite;
-			public int id;
-
-			public S2Sprite(string path, Sprite sprite, int id)
-			{
-				this.path = path;
-				this.sprite = sprite;
-				this.id = id;
-			}
-		}
-
-		public class TextureManager
-		{
-			public S2Sprite CreateSprite(string path)
-			{
-
-				return new S2Sprite("", null, Constants.NullTextureID);
-			}
 		}
 	}
 
-	public enum UpdateMode { WhenLevelActive, Always };
+	public static class Extensions
+    {
+		public static void AddOnce<T>(this List<T> to, T what)
+        {
+			if (!to.Contains(what)) to.Add(what);
+        }
+
+		public static void RemoveOnce<T>(this List<T> to, T what)
+        {
+			if (to.Contains(what)) to.Remove(what);
+        }
+    }
+
+    public enum UpdateMode { WhenLevelActive, Always };
 	public enum DrawMode { WhenLevelActive, DrawAlways, DontDraw };
 	public enum LoadLevelType { Override, Background };
 
-	public class Level
+    public class World
+    {
+		public string name = "world";
+		
+    }
+
+    public class Scene
 	{
 
 	}
 
-	public class LevelManager
+	public class SceneInstance
 	{
+		public Scene instanceOf;
+    }
 
-	}
+    public class SceneManager
+	{
+		public List<SceneInstance> ActiveLevels = new();
+		public SceneInstance CurrentScene;
+    }
 
-	public static class Constants
+	public static class S2Random
+    {
+		public static int Range(int lower, int upper)
+        {
+			return new Random().Next(lower, upper);
+        }
+
+		public static float Range(float lower, float upper)
+        {
+			System.Random random = new System.Random();
+			double val = (random.NextDouble() * (upper - lower) + lower);
+			return (float)val;
+		}
+    }
+
+    public static class Constants
 	{
 		public static int NullTextureID = -1;
 		public static string ResourcesPath = "\\resources\\";
-		public static string TexturesPath = "\\resources\\textures\\";
+		public static string TexturesPath = ResourcesPath + "\\textures\\";
+		public static string SoundsPath = ResourcesPath + "\\sounds\\";
 	}
+
 	public class S2DContext
 	{
 		public RenderWindow? MainWindow;
 		public string WindowName = "game";
 	}
 
+	public struct S2Sprite
+	{
+		public string path;
+		public int id;
+
+		public Vector2 offset;
+		public Texture spriteTexture;
+		public Sprite sprite;
+
+		public S2Sprite(string path, int id)
+		{
+			this.path = path;
+			this.id = id;
+			this.sprite = new Sprite();
+			spriteTexture = new Texture(path);
+			sprite.Texture = spriteTexture;
+			offset = Vector2.zero;
+		}
+
+		public void SetPosition(Vector2 pos)
+        {
+			sprite.Position = pos + offset;
+        }
+
+		public void SetRotation(float r)
+        {
+			sprite.Rotation = r;
+		}
+
+		public void SetScale(Vector2 scale)
+        {
+			sprite.Scale = scale;
+		}
+
+		public void Draw()
+        {
+			Internal.context.MainWindow.Draw(sprite);
+        }
+	}
+
 	public struct Vector2
 	{
 		float x, y;
-		static Vector2 zero = new Vector2(0, 0);
+		public static Vector2 zero = new Vector2(0, 0);
 
 		static float sqrt(float num)
 		{
@@ -136,7 +200,26 @@ namespace S2DInternal
 		#endregion
 
 		#region Casts
+		public static implicit operator Vector2(Vec2 v)
+        {
+			return new Vector2(v.X, v.Y);
+        }
 
+		public static implicit operator Vector2(Vector2f v)
+        {
+			return new Vector2(v.X, v.Y);
+        }
+
+
+		public static implicit operator Vec2(Vector2 v)
+        {
+			return new Vec2(v.x, v.y);
+        }
+
+		public static implicit operator Vector2f(Vector2 v)
+        {
+			return new Vector2f(v.x, v.y);
+        }
 		#endregion
 
 		#region Constructors
@@ -218,17 +301,133 @@ namespace S2DInternal
 
 		public float rotation = 0;
 		public int instanceID;
-		public Level? level;
+		public SceneInstance? level;
 
 		public UpdateMode updateMode = UpdateMode.WhenLevelActive;
 		public DrawMode drawMode = DrawMode.WhenLevelActive;
 
+		public int layer;
+		public List<string> Tags;
 
+		public static Actor Create()
+        {
+			Actor actor = new();
+			actor.active = true;
+			return actor;
+        }
+
+		public void Destroy()
+        {
+
+        }
 	}
 
-	public class Component
+	public abstract class Component
     {
-		public Actor? actor;
-		public UpdateMode updateMode = UpdateMode.WhenLevelActive;
+		public Actor actor;
+		public int intanceID;
+		public bool enabled = true;
+
+		public static T Add<T>(Actor to) where T :  Component, new()
+        {
+			T cmp = new();
+			cmp.actor = to;
+			cmp.enabled = true;
+			return cmp;
+        }
+
+		public static T? Get<T>(Actor from) where T :  Component, new()
+        {
+			T cmp = null;
+            for (int i = 0; i < UpdateManager.ActiveComponents.Count; i++)
+            {
+				cmp = (T?)UpdateManager.ActiveComponents[i];
+				if (cmp.GetType() == typeof(T))
+                {
+					if (cmp.actor == from)
+                    {
+						return cmp;
+                    }
+                }
+            }
+
+			return null;
+        }
+
+		public void InitializeComponent(Component cmp)
+        {
+			UpdateManager.ActiveComponents.AddOnce(this);
+        }
+
+		~Component() {
+
+        }
+
+		#region Class Methods
+		public virtual void Start()
+        {
+
+        }
+
+		public virtual void PreUpdate()
+        {
+
+        }
+
+		public abstract void Update();
+
+		public virtual void PhysUpdate()
+        {
+
+        }
+
+		public virtual void LateUpdate()
+        {
+
+        }
+        #endregion
+    }
+
+
+
+    public static class UpdateManager
+    {
+		public static List<Component> ActiveComponents = new();
+		public static List<Actor> ActiveActors = new();
+
+
+		public static void UpdateEngine()
+		{
+			Component cmp = null;
+            for (int i = 0; i < ActiveComponents.Count; i++)
+            {
+				cmp = ActiveComponents[i];
+				if (cmp == null) continue;
+				if (!cmp.enabled) continue;
+				if (!cmp.actor.active) continue;
+
+				cmp.PreUpdate();
+			}
+
+			for (int i = 0; i < ActiveComponents.Count; i++)
+            {
+				cmp = ActiveComponents[i];
+				if (cmp == null) continue;
+				if (!cmp.enabled) continue;
+				if (!cmp.actor.active) continue;
+
+				cmp.Update();
+            }
+
+			for (int i = 0; i < ActiveComponents.Count; i++)
+            {
+				cmp = ActiveComponents[i];
+				if (cmp == null) continue;
+				if (!cmp.enabled) continue;
+				if (!cmp.actor.active) continue;
+
+				cmp.LateUpdate();
+            }
+		}
 	}
 }
