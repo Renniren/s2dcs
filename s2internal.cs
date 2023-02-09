@@ -226,8 +226,9 @@ namespace S2DInternal
 
 	}
 
-	public class Node
+	public class Component
     {
-
-    }
+		public Actor? actor;
+		public UpdateMode updateMode = UpdateMode.WhenLevelActive;
+	}
 }
