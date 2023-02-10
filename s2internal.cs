@@ -1,9 +1,11 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
+
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
-using System.IO;
 
 using SFML;
 using SFML.Audio;
@@ -71,20 +73,31 @@ namespace S2DCore
 	public enum DrawMode { WhenLevelActive, DrawAlways, DontDraw };
 	public enum LoadLevelType { Override, Background };
 
+
+
     public class World
     {
 		public string name = "world";
-		
+		public float Gravity = -9.81f;
+		public Color backgroundColor;
+		public S2Sprite backgroundSprite;
     }
 
+	[System.Serializable]
     public class Scene
 	{
-
+		public string name;
+		public World world = new World();
+		public List<Actor> actors = new List<Actor>();
 	}
 
 	public class SceneInstance
 	{
 		public Scene instanceOf;
+		public SceneInstance(Scene s)
+        {
+			instanceOf = s;
+        }
     }
 
     public class SceneManager
@@ -170,6 +183,99 @@ namespace S2DCore
         {
 			Internal.context.MainWindow.Draw(sprite);
         }
+	}
+
+	public struct Color
+	{
+		public float
+			r, g, b, a;
+
+		#region Constructors
+		public Color(float r, float g, float b, float a)
+		{
+			this.r = r;
+			this.g = g;
+			this.b = b;
+			this.a = a;
+		}
+
+		public Color(float r, float g, float b)
+		{
+			this.r = r;
+			this.g = g;
+			this.b = b;
+			this.a = 1;
+		}
+
+		public Color(float r = 1)
+		{
+			this.r = r;
+			this.g = r;
+			this.b = r;
+			this.a = 1;
+		}
+
+		public Color(Color c)
+		{
+			this.r = c.r;
+			this.g = c.g;
+			this.b = c.b;
+			this.a = c.a;
+		}
+		#endregion
+
+		#region Operators
+		public static Color operator +(Color a, Color b)
+		{
+			Color c = new(a);
+			a.r += b.r;
+			a.g += b.g;
+			a.b += b.b;
+			a.a += b.a;
+			return c;
+		}
+
+		public static Color operator -(Color a, Color b)
+		{
+			Color c = new(a);
+			a.r -= b.r;
+			a.g -= b.g;
+			a.b -= b.b;
+			a.a -= b.a;
+			return c;
+		}
+
+		public static Color operator /(Color a, Color b)
+		{
+			Color c = new(a);
+			a.r /= b.r;
+			a.g /= b.g;
+			a.b /= b.b;
+			a.a /= b.a;
+			return c;
+		}
+
+
+		public static Color operator /(Color a, float b)
+		{
+			Color c = new(a);
+			a.r /= b;
+			a.g /= b;
+			a.b /= b;
+			a.a /= b;
+			return c;
+		}
+
+		public static Color operator *(Color a, float b)
+		{
+			Color c = new(a);
+			a.r -= b;
+			a.g -= b;
+			a.b -= b;
+			a.a -= b;
+			return c;
+		}
+		#endregion
 	}
 
 	public struct Vector2
@@ -302,7 +408,17 @@ namespace S2DCore
 		#endregion
 	}
 
-	[System.Serializable]
+	public class S2DSerializer
+    {
+		public void SerializeScene(Scene scene)
+        {
+			string result = "";
+			result += JsonSerializer.Serialize(scene.world);
+
+        }
+    }
+
+    [System.Serializable]
 	public class Actor
 	{
 		public bool active;
@@ -316,23 +432,55 @@ namespace S2DCore
 		public UpdateMode updateMode = UpdateMode.WhenLevelActive;
 
 		public int layer;
-		public List<string> Tags;
+		public List<string> Tags = new List<string>();
 
-		public static Actor Create()
+		public static Actor Create(Vector2 position, Vector2 scale, string name = "New Actor", float rotation = 0)
         {
 			Actor actor = new();
 			actor.active = true;
+			actor.scale = scale;
+			actor.position = position;
+			actor.rotation = rotation;
+			actor.SetScene(SceneManager.CurrentScene);
 			return actor;
         }
+
+		public T GetComponent<T>() where T : Component, new()
+		{
+			return Component.Get<T>(this);
+        }
+
+		public T AddComponent<T>() where T : Component, new()
+		{
+			return Component.Add<T>(this);
+        }
+
+
 
 		public void SetScene(SceneInstance destination)
         {
 			scene = destination;
+			
         }
 
 		public void Destroy()
         {
 
+        }
+
+		public static bool operator true(Actor a)
+        {
+			return a != null;
+        }
+
+		public static bool operator false(Actor a)
+        {
+			return a == null;
+        }
+
+		public static bool operator !(Actor a)
+        {
+			return a == null;
         }
 	}
 
@@ -344,6 +492,11 @@ namespace S2DCore
 
 		public static T Add<T>(Actor to) where T :  Component, new()
         {
+			if (!to) 
+			{
+				Internal.Log("Cannot add a component to a null Actor");
+				return null;
+			}
 			T cmp = new();
 			cmp.actor = to;
 			cmp.enabled = true;
@@ -397,6 +550,21 @@ namespace S2DCore
         }
 
 		#region Class Methods
+		public static bool operator true(Component a)
+		{
+			return a != null;
+		}
+
+		public static bool operator false(Component a)
+		{
+			return a == null;
+		}
+
+		public static bool operator !(Component a)
+		{
+			return a == null;
+		}
+
 		public virtual void Start()
         {
 
