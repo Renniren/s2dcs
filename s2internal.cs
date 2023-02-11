@@ -83,6 +83,9 @@ namespace S2DCore
 		public S2Sprite backgroundSprite;
     }
 
+	//the Scene datatype describes a Scene: the Actors contained within it and their
+	//components, its name, and other attributes it may have. Scenes themselves are 
+	//not actually used on their own, and are instead loaded via a SceneInstance.
 	[System.Serializable]
     public class Scene
 	{
@@ -294,8 +297,13 @@ namespace S2DCore
 			return (float)Math.Pow((double)num, (double)num2);
 		}
 
-		#region Class Methods
-	static float Distance(Vector2 a, Vector2 b)
+        public override string ToString()
+        {
+			return "(" + x.ToString() + ", " + y.ToString() + ")";
+        }
+
+        #region Class Methods
+        static float Distance(Vector2 a, Vector2 b)
 		{
 			return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
 		}
@@ -410,10 +418,70 @@ namespace S2DCore
 
 	public class S2DSerializer
     {
-		public void SerializeScene(Scene scene)
+		static string FILE_BEGIN = "FILE:\n";
+		static string FILE_END = "\nEND";
+
+		static string SCOPE_BEGIN = "\n{";
+		static string SCOPE_END = "\n}";
+
+		static string ARR_BEGIN = "[";
+		static string ARR_END = "]";
+
+		static string ATTR_BEGIN = "(";
+		static string ATTR_END = ")";
+
+		static string OBJECT_SCOPE = "\nOBJ";
+
+		static string ind = "\t";
+
+		static string name = "level";
+		static string path;
+		static string filename;
+		static string ext = ".s2";
+
+		public static void SerializeScene(Scene scene)
         {
-			string result = "";
-			result += JsonSerializer.Serialize(scene.world);
+			string result = scene.name + ":\n";
+			result += FILE_BEGIN;
+			
+			void add(string v)
+            {
+				result += "\n" + v;
+            }
+
+			Actor act;
+            for (int i = 0; i < scene.actors.Count; i++)
+            {
+				act = scene.actors[i];
+				add("actor " + act.name);
+				result += SCOPE_BEGIN;
+				
+				add("position " + act.position.ToString());
+				add("rotation " + act.rotation.ToString());
+				add("scale " + act.scale.ToString());
+				add("active " + act.active.ToString());
+				add("id " + act.instanceID.ToString());
+				add("update " + act.updateMode.ToString());
+
+
+				result += SCOPE_END + "\n";
+            }
+
+			string path = Internal.GetCWD() +
+				Constants.ResourcesPath + "\\levels\\";
+
+			if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+
+			result += FILE_END;
+
+			
+			File.WriteAllText(path + scene.name + ext, result);
+        }
+
+		public static  void LoadScene(string path)
+        {
+			string file = File.ReadAllText(path);
+			string[] split = file.Split('{', '}', ':', '[', ']', ',');
 
         }
     }
@@ -434,6 +502,8 @@ namespace S2DCore
 		public int layer;
 		public List<string> Tags = new List<string>();
 
+		public List<Component> components = new();
+
 		public static Actor Create(Vector2 position, Vector2 scale, string name = "New Actor", float rotation = 0)
         {
 			Actor actor = new();
@@ -441,6 +511,7 @@ namespace S2DCore
 			actor.scale = scale;
 			actor.position = position;
 			actor.rotation = rotation;
+			actor.name = name;
 			actor.SetScene(SceneManager.CurrentScene);
 			return actor;
         }
@@ -499,6 +570,7 @@ namespace S2DCore
 			}
 			T cmp = new();
 			cmp.actor = to;
+			cmp.actor.components.AddOnce(cmp);
 			cmp.enabled = true;
 			return cmp;
         }

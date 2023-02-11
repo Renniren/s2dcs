@@ -24,6 +24,7 @@ class S2GameEntry
         sr.sprite = new S2Sprite(Internal.GetCWD() + 
             Constants.TexturesPath + "squareSmall.png", 2);
 
+        
         Scene serializetest = new();
 
         serializetest.name = "TestScene";
@@ -35,7 +36,11 @@ class S2GameEntry
             Actor a = Actor.Create(Vector2.zero, Vector2.one, "New Actor " + i.ToString(), 0);
             serializetest.actors.AddOnce(a);
         }
+        S2DSerializer.SerializeScene(serializetest);
 
+
+        S2DSerializer.LoadScene(Internal.GetCWD() +
+                Constants.ResourcesPath + "\\levels\\" + serializetest.name + ".s2");
         while (Internal.context.MainWindow.IsOpen)
         {
             Internal.context.MainWindow.DispatchEvents();
