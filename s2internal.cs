@@ -48,46 +48,46 @@ namespace S2DCore
 			}
 
 			if (!Directory.Exists(GetCWD() + Constants.ResourcesPath))
-            {
+			{
 
-            }
+			}
 
 			return false;
 		}
 	}
 
 	public static class Extensions
-    {
+	{
 		public static void AddOnce<T>(this List<T> to, T what)
-        {
+		{
 			if (!to.Contains(what)) to.Add(what);
-        }
+		}
 
 		public static void RemoveOnce<T>(this List<T> to, T what)
-        {
+		{
 			if (to.Contains(what)) to.Remove(what);
-        }
-    }
+		}
+	}
 
-    public enum UpdateMode { WhenLevelActive, Always };
+	public enum UpdateMode { WhenLevelActive, Always };
 	public enum DrawMode { WhenLevelActive, DrawAlways, DontDraw };
 	public enum LoadLevelType { Override, Background };
 
 
 
-    public class World
-    {
+	public class World
+	{
 		public string name = "world";
 		public float Gravity = -9.81f;
 		public Color backgroundColor;
 		public S2Sprite backgroundSprite;
-    }
+	}
 
 	//the Scene datatype describes a Scene: the Actors contained within it and their
 	//components, its name, and other attributes it may have. Scenes themselves are 
 	//not actually used on their own, and are instead loaded via a SceneInstance.
 	[System.Serializable]
-    public class Scene
+	public class Scene
 	{
 		public string name;
 		public World world = new World();
@@ -98,34 +98,34 @@ namespace S2DCore
 	{
 		public Scene instanceOf;
 		public SceneInstance(Scene s)
-        {
+		{
 			instanceOf = s;
-        }
-    }
+		}
+	}
 
-    public class SceneManager
+	public class SceneManager
 	{
 		public static List<SceneInstance> ActiveLevels = new();
 		public static SceneInstance CurrentScene;
 		public static SceneInstance DestroyedObjectLevel;
-    }
+	}
 
 	public static class S2Random
-    {
+	{
 		public static int Range(int lower, int upper)
-        {
+		{
 			return new Random().Next(lower, upper);
-        }
+		}
 
 		public static float Range(float lower, float upper)
-        {
+		{
 			System.Random random = new System.Random();
 			double val = (random.NextDouble() * (upper - lower) + lower);
 			return (float)val;
 		}
-    }
+	}
 
-    public static class Constants
+	public static class Constants
 	{
 		public static float SpriteScale = 64;
 		public static int NullTextureID = -1;
@@ -166,26 +166,26 @@ namespace S2DCore
 		}
 
 		public void SetPosition(Vector2 pos)
-        {
+		{
 			sprite.Position = pos + offset;
-        }
+		}
 
 		public void SetRotation(float r)
-        {
+		{
 			sprite.Rotation = r;
 		}
 
 		public void SetScale(Vector2 scale)
-        {
+		{
 			sprite.Scale = new Vector2f(
 			scale.x / sprite.GetLocalBounds().Width,
 			scale.y / sprite.GetLocalBounds().Height) * Constants.SpriteScale;
 		}
 
 		public void Draw()
-        {
+		{
 			Internal.context.MainWindow.Draw(sprite);
-        }
+		}
 	}
 
 	public struct Color
@@ -297,13 +297,13 @@ namespace S2DCore
 			return (float)Math.Pow((double)num, (double)num2);
 		}
 
-        public override string ToString()
-        {
+		public override string ToString()
+		{
 			return "(" + x.ToString() + ", " + y.ToString() + ")";
-        }
+		}
 
-        #region Class Methods
-        static float Distance(Vector2 a, Vector2 b)
+		#region Class Methods
+		static float Distance(Vector2 a, Vector2 b)
 		{
 			return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
 		}
@@ -326,25 +326,25 @@ namespace S2DCore
 
 		#region Casts
 		public static implicit operator Vector2(Vec2 v)
-        {
+		{
 			return new Vector2(v.X, v.Y);
-        }
+		}
 
 		public static implicit operator Vector2(Vector2f v)
-        {
+		{
 			return new Vector2(v.X, v.Y);
-        }
+		}
 
 
 		public static implicit operator Vec2(Vector2 v)
-        {
+		{
 			return new Vec2(v.x, v.y);
-        }
+		}
 
 		public static implicit operator Vector2f(Vector2 v)
-        {
+		{
 			return new Vector2f(v.x, v.y);
-        }
+		}
 		#endregion
 
 		#region Constructors
@@ -417,7 +417,7 @@ namespace S2DCore
 	}
 
 	public class S2DSerializer
-    {
+	{
 		static string FILE_BEGIN = "FILE:\n";
 		static string FILE_END = "\nEND";
 
@@ -441,18 +441,18 @@ namespace S2DCore
 		static string ext = ".s2";
 
 		public static void SerializeScene(Scene scene)
-        {
+		{
 			string result = scene.name + ":\n";
 			result += FILE_BEGIN;
 			
 			void add(string v)
-            {
+			{
 				result += "\n" + v;
-            }
+			}
 
 			Actor act;
-            for (int i = 0; i < scene.actors.Count; i++)
-            {
+			for (int i = 0; i < scene.actors.Count; i++)
+			{
 				act = scene.actors[i];
 				add("define_actor " + act.name);
 				result += SCOPE_BEGIN;
@@ -466,7 +466,7 @@ namespace S2DCore
 
 
 				result += SCOPE_END + "\n";
-            }
+			}
 
 			string path = Internal.GetCWD() +
 				Constants.ResourcesPath + "\\levels\\";
@@ -477,11 +477,11 @@ namespace S2DCore
 
 			
 			File.WriteAllText(path + scene.name + ext, result);
-        }
+		}
 		enum scope {  actor_definition, };
 
 		public static  void LoadScene(string path)
-        {
+		{
 			string file = File.ReadAllText(path);
 			//split the file's contents
 			string[] split = file.Split(
@@ -495,10 +495,10 @@ namespace S2DCore
 			//trim the excess
 
 			List<string> non_whitespace = new();
-            foreach (var item in split)
-            {
+			foreach (var item in split)
+			{
 				if (!string.IsNullOrWhiteSpace(item)) non_whitespace.Add(item);
-            }
+			}
 
 			static void nop() { }; //this is here specifically for breakpoints
 			static void emit(object j) { Console.WriteLine(j); };
@@ -521,25 +521,25 @@ namespace S2DCore
 
 
 			//really awful spaghetti deserialization code with silly hacks
-            foreach (string item in filesplit)
-            {
+			foreach (string item in filesplit)
+			{
 				if (item.Contains("define_actor"))
-                {
+				{
 					inActorNameDefinition = true;
-                }
+				}
 
 				if (item == "}")
-                {
+				{
 					contents.Clear();
 					inActorDefinition = false;
 					inActorNameDefinition = false;
 					actors.Add(Actor.Copy(new_actor));
-                }
+				}
 
 				if (item == "{")
-                {
+				{
 					if (inActorNameDefinition)
-                    {
+					{
 						inActorDefinition = true;
 						inActorNameDefinition = false;
 
@@ -556,25 +556,25 @@ namespace S2DCore
 				}
 
 				if (inActorDefinition)
-                {
+				{
 					if (item.Contains("position"))
-                    {
+					{
 						position = true;
 						continue;
-                    }
+					}
 
 					if (position)
-                    {
+					{
 						position_s += item;
-                    }
-                }
-            }
+					}
+				}
+			}
 
 			nop();
-        }
-    }
+		}
+	}
 
-    [System.Serializable]
+	[System.Serializable]
 	public class Actor
 	{
 		public bool active;
@@ -593,7 +593,7 @@ namespace S2DCore
 		public List<Component> components = new();
 
 		public static Actor Create(Vector2 position, Vector2 scale, string name = "new Actor", float rotation = 0)
-        {
+		{
 			Actor actor = new();
 			actor.active = true;
 			actor.scale = scale;
@@ -602,10 +602,10 @@ namespace S2DCore
 			actor.name = name;
 			actor.SetScene(SceneManager.CurrentScene);
 			return actor;
-        }
+		}
 
 		public static Actor Copy(Actor a)
-        {
+		{
 			Actor clone = new Actor();
 			clone.position = a.position;
 			clone.rotation = a.rotation;
@@ -624,57 +624,57 @@ namespace S2DCore
 			clone.updateMode = a.updateMode;
 
 			return clone;
-        }
+		}
 
 
 
 		public T GetComponent<T>() where T : Component, new()
 		{
 			return Component.Get<T>(this);
-        }
+		}
 
 		public T AddComponent<T>() where T : Component, new()
 		{
 			return Component.Add<T>(this);
-        }
+		}
 
 
 
 		public void SetScene(SceneInstance destination)
-        {
+		{
 			scene = destination;
 			
-        }
+		}
 
 		public void Destroy()
-        {
+		{
 
-        }
+		}
 
 		public static bool operator true(Actor a)
-        {
+		{
 			return a != null;
-        }
+		}
 
 		public static bool operator false(Actor a)
-        {
+		{
 			return a == null;
-        }
+		}
 
 		public static bool operator !(Actor a)
-        {
+		{
 			return a == null;
-        }
+		}
 	}
 
 	public class Component
-    {
+	{
 		public Actor actor;
 		public int intanceID;
 		public bool enabled = true;
 
 		public static T Add<T>(Actor to) where T :  Component, new()
-        {
+		{
 			if (!to) 
 			{
 				Internal.Log("Cannot add a component to a null Actor");
@@ -685,54 +685,54 @@ namespace S2DCore
 			cmp.actor.components.AddOnce(cmp);
 			cmp.enabled = true;
 			return cmp;
-        }
+		}
 
 		public static T? Get<T>(Actor from) where T :  Component, new()
-        {
+		{
 			T cmp = null;
-            for (int i = 0; i < UpdateManager.ActiveComponents.Count; i++)
-            {
+			for (int i = 0; i < UpdateManager.ActiveComponents.Count; i++)
+			{
 				cmp = UpdateManager.ActiveComponents[i] as T;
 				if (cmp.GetType() == typeof(T))
-                {
+				{
 					if (cmp.actor == from)
-                    {
+					{
 						return cmp;
-                    }
-                }
-            }
+					}
+				}
+			}
 
 			return null;
-        }
+		}
 
 		public static void TryGet<T>(Actor from, out T? v) where T :  Component
-        {
-            for (int i = 0; i < UpdateManager.ActiveComponents.Count; i++)
-            {
+		{
+			for (int i = 0; i < UpdateManager.ActiveComponents.Count; i++)
+			{
 				if (UpdateManager.ActiveComponents[i].GetType() == typeof(T))
-                {
+				{
 					if (UpdateManager.ActiveComponents[i].actor == from)
-                    {
+					{
 						v = (T?)UpdateManager.ActiveComponents[i];
 						return;
 					}
-                }
-            }
+				}
+			}
 
 			v = null;
-        }
+		}
 
 
 
 		public void InitializeComponent(Component cmp)
-        {
+		{
 			UpdateManager.ActiveComponents.AddOnce(this);
 			Start();
-        }
+		}
 
 		~Component() {
 
-        }
+		}
 
 		#region Class Methods
 		public static bool operator true(Component a)
@@ -751,34 +751,34 @@ namespace S2DCore
 		}
 
 		public virtual void Start()
-        {
+		{
 
-        }
+		}
 
 		public virtual void PreUpdate()
-        {
+		{
 
-        }
+		}
 
 		public virtual void Update()
-        {
+		{
 
-        }
+		}
 
 		public virtual void PhysUpdate()
-        {
+		{
 
-        }
+		}
 
 		public virtual void LateUpdate()
-        {
+		{
 
-        }
-        #endregion
-    }
+		}
+		#endregion
+	}
 
-    public static class UpdateManager
-    {
+	public static class UpdateManager
+	{
 		public static List<Component> ActiveComponents = new();
 		public static List<Actor> ActiveActors = new();
 
@@ -786,13 +786,13 @@ namespace S2DCore
 		{
 			Component cmp = null;
 			for (int i = 0; i < ActiveComponents.Count; i++)
-            {
+			{
 				cmp = ActiveComponents[i];
 				if (cmp == null) continue;
 				if (!cmp.enabled) continue;
 				if (!cmp.actor.active) continue;
 				switch(cmp.actor.updateMode)
-                {
+				{
 					case UpdateMode.Always:
 						cmp.PreUpdate();
 						cmp.Update();
@@ -801,14 +801,14 @@ namespace S2DCore
 
 					case UpdateMode.WhenLevelActive:
 						if(SceneManager.CurrentScene == cmp.actor.scene)
-                        {
+						{
 							cmp.PreUpdate();
 							cmp.Update();
 							cmp.LateUpdate();
 						}
 						break;
-                }
-            }
+				}
+			}
 		}
 	}
 }
