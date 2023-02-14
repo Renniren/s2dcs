@@ -429,6 +429,7 @@ namespace S2DCore
 
 		static string ATTR_BEGIN = "(";
 		static string ATTR_END = ")";
+		static string LINE_END = ";";
 
 		static string OBJECT_SCOPE = "\nOBJ";
 
@@ -453,15 +454,15 @@ namespace S2DCore
             for (int i = 0; i < scene.actors.Count; i++)
             {
 				act = scene.actors[i];
-				add("actor " + act.name);
+				add("define_actor " + act.name);
 				result += SCOPE_BEGIN;
 				
-				add("position " + act.position.ToString());
-				add("rotation " + act.rotation.ToString());
-				add("scale " + act.scale.ToString());
-				add("active " + act.active.ToString());
-				add("id " + act.instanceID.ToString());
-				add("update " + act.updateMode.ToString());
+				add("position " + act.position.ToString() + LINE_END);
+				add("rotation " + act.rotation.ToString() + LINE_END);
+				add("scale " + act.scale.ToString() + LINE_END);
+				add("active " + act.active.ToString() + LINE_END);
+				add("id " + act.instanceID.ToString() + LINE_END);
+				add("update " + act.updateMode.ToString() + LINE_END);
 
 
 				result += SCOPE_END + "\n";
@@ -477,12 +478,99 @@ namespace S2DCore
 			
 			File.WriteAllText(path + scene.name + ext, result);
         }
+		enum scope {  actor_definition, };
 
 		public static  void LoadScene(string path)
         {
 			string file = File.ReadAllText(path);
-			string[] split = file.Split('{', '}', ':', '[', ']', ',');
+			//split the file's contents
+			string[] split = file.Split(
+				':', 
+				'[', 
+				']', 
+				'\n', 
+				'\t'
+				);
 
+			//trim the excess
+
+			List<string> non_whitespace = new();
+            foreach (var item in split)
+            {
+				if (!string.IsNullOrWhiteSpace(item)) non_whitespace.Add(item);
+            }
+
+			static void nop() { }; //this is here specifically for breakpoints
+			static void emit(object j) { Console.WriteLine(j); };
+
+			string[] filesplit = non_whitespace.ToArray();
+
+			string actor_name = "";
+			string position_s = "";
+			Actor new_actor = new Actor();
+
+			List<string> contents = new();
+			List<Actor> actors = new();
+
+			bool inActorDefinition = false;
+			bool inActorNameDefinition = false;
+
+			bool position = false, 
+				scale = false, 
+				rotation = false;
+
+
+			//really awful spaghetti deserialization code with silly hacks
+            foreach (string item in filesplit)
+            {
+				if (item.Contains("define_actor"))
+                {
+					inActorNameDefinition = true;
+                }
+
+				if (item == "}")
+                {
+					contents.Clear();
+					inActorDefinition = false;
+					inActorNameDefinition = false;
+					actors.Add(Actor.Copy(new_actor));
+                }
+
+				if (item == "{")
+                {
+					if (inActorNameDefinition)
+                    {
+						inActorDefinition = true;
+						inActorNameDefinition = false;
+
+						string real_name = actor_name.Replace("define_actor", string.Empty);
+						real_name = real_name.Trim();
+						new_actor.name = real_name;
+						actor_name = "";
+					}
+				}
+
+				if (inActorNameDefinition)
+				{
+					actor_name += item;
+				}
+
+				if (inActorDefinition)
+                {
+					if (item.Contains("position"))
+                    {
+						position = true;
+						continue;
+                    }
+
+					if (position)
+                    {
+						position_s += item;
+                    }
+                }
+            }
+
+			nop();
         }
     }
 
@@ -504,7 +592,7 @@ namespace S2DCore
 
 		public List<Component> components = new();
 
-		public static Actor Create(Vector2 position, Vector2 scale, string name = "New Actor", float rotation = 0)
+		public static Actor Create(Vector2 position, Vector2 scale, string name = "new Actor", float rotation = 0)
         {
 			Actor actor = new();
 			actor.active = true;
@@ -515,6 +603,30 @@ namespace S2DCore
 			actor.SetScene(SceneManager.CurrentScene);
 			return actor;
         }
+
+		public static Actor Copy(Actor a)
+        {
+			Actor clone = new Actor();
+			clone.position = a.position;
+			clone.rotation = a.rotation;
+			clone.scale = a.scale;
+
+			clone.components = a.components;
+			clone.Tags = a.Tags;
+			
+			clone.instanceID = a.instanceID;
+			clone.layer = a.layer;
+			
+			clone.active = a.active;
+			clone.name = a.name;
+			
+			clone.scene = a.scene;
+			clone.updateMode = a.updateMode;
+
+			return clone;
+        }
+
+
 
 		public T GetComponent<T>() where T : Component, new()
 		{
@@ -615,6 +727,7 @@ namespace S2DCore
 		public void InitializeComponent(Component cmp)
         {
 			UpdateManager.ActiveComponents.AddOnce(this);
+			Start();
         }
 
 		~Component() {

@@ -29,7 +29,25 @@ namespace S2DComponents
 		}
 	}
 
-	public class ComponentTest : Component
+	public class SerializeTest : Component
+    {
+		public int value = 0;
+		public int othervalue = 0;
+		public int anothervalue = 0;
+
+		public SerializeTest()
+        {
+			InitializeComponent(this);
+        }
+
+        public override void Start()
+        {
+			value = S2Random.Range(int.MinValue, int.MaxValue);
+			Console.WriteLine(actor.name + ": " + value);
+        }
+    }
+
+    public class ComponentTest : Component
 	{
 		public ComponentTest()
 		{
