@@ -35,6 +35,7 @@ namespace S2DComponents
 		public int othervalue = 0;
 		public int anothervalue = 0;
 		public SerializeTest otherTestComponent;
+		public Actor FunnyActor;
 
 		public SerializeTest()
         {

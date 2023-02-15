@@ -495,11 +495,20 @@ namespace S2DCore
 				//we can use to link together components and actors in deserialization
 				foreach (var field in cmp.GetType().GetFields())
 				{
+					bool isActorOrComponent =
+						(field.Name == "actor") ||
+						field.FieldType.BaseType == typeof(Component) ||
+						field.FieldType.BaseType == typeof(Actor);
+
+					bool isActor = field.FieldType.BaseType == typeof(Actor);
+					bool isComponent = field.FieldType.BaseType == typeof(Component);
+
 					if (field.Name == "actor")
 					{
 						add(field.Name + ": " + cmp.actor.instanceID);
 					}
-					if (field.FieldType.BaseType == typeof(Component))
+
+					if (isComponent)
 					{
 						//super awful dangerous cast magic, this is some of of the weirdest C# I've written
 						bool successfulcast = (field.GetValue(cmp) as Component) != null;
@@ -509,7 +518,13 @@ namespace S2DCore
 							add(field.Name + ": " + (field.GetValue(cmp) as Component).instanceID);
 						}
 					}
-					if(field.FieldType.BaseType != typeof(Component) && field.Name != "actor")
+
+					if (isActor)
+					{
+						add(field.Name + ": " + (field.GetValue(cmp) as Actor).instanceID);
+					}
+
+					if(!isActorOrComponent)
 					{
 						add(field.Name + ": " + field.GetValue(cmp));
 					}
@@ -529,6 +544,9 @@ namespace S2DCore
 			File.WriteAllText(path + scene.name + ext, result);
 		}
 		enum scope {  actor_definition, };
+
+		//todo: after reconstructing actors we'll also need to reconstruct components, then 
+		//re-attach them to their actors or parent components using given IDs
 
 		public static  void LoadScene(string path)
 		{

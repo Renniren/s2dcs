@@ -44,6 +44,9 @@ class S2GameEntry
             test2.value = 4096;
             test2.othervalue = 403;
             test2.anothervalue = 143;
+            
+            test.FunnyActor = a;
+            test2.FunnyActor = a;
 
             test.otherTestComponent = test2;
             serializetest.actors.AddOnce(a);
