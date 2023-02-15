@@ -34,6 +34,7 @@ namespace S2DComponents
 		public int value = 0;
 		public int othervalue = 0;
 		public int anothervalue = 0;
+		public SerializeTest otherTestComponent;
 
 		public SerializeTest()
         {
@@ -42,7 +43,6 @@ namespace S2DComponents
 
         public override void Start()
         {
-			value = S2Random.Range(int.MinValue, int.MaxValue);
 			Console.WriteLine(actor.name + ": " + value);
         }
     }

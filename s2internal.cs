@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 using System.Collections.Generic;
 
 using System.Linq;
@@ -416,6 +417,7 @@ namespace S2DCore
 		#endregion
 	}
 
+	//forgive me for the awful, awful things done in this class
 	public class S2DSerializer
 	{
 		static string FILE_BEGIN = "FILE:\n";
@@ -450,10 +452,20 @@ namespace S2DCore
 				result += "\n" + v;
 			}
 
+			List<Component> actor_components = new();
 			Actor act;
+
+			//first, stuff all of the Actors into our will-be string
 			for (int i = 0; i < scene.actors.Count; i++)
 			{
+				//then let's ALSO record all of the components on the scene's Actors
+
 				act = scene.actors[i];
+                for (int b = 0; b < act.components.Count; b++)
+                {
+					actor_components.Add(act.components[b]);
+                }
+				
 				add("define_actor " + act.name);
 				result += SCOPE_BEGIN;
 				
@@ -466,6 +478,38 @@ namespace S2DCore
 
 
 				result += SCOPE_END + "\n";
+			}
+
+			result += "\nCOMPONENTS:\n";
+
+			Component cmp;
+            for (int i = 0; i < actor_components.Count; i++)
+            {
+				cmp = actor_components[i];
+				result += cmp.GetType().Name + "";
+				result += SCOPE_BEGIN;
+
+				//because obviously it should be a component, so it'll have an actor
+				//which means we can simply use the actor's ID as the actor it belongs to, and if the
+				//field is a component (which it SHOULD be), we can use that component's instance ID, which
+				//we can use to link together components and actors in deserialization
+				foreach (var field in cmp.GetType().GetFields())
+                {
+					if (field.Name == "actor")
+                    {
+						add(field.Name + ": " + cmp.actor.instanceID);
+					}
+					else if (field.FieldType.BaseType.GetType() == typeof(Component))
+                    {
+						add(field.Name + ": " + (field.GetValue(cmp) as Component).instanceID); //this feels so evil
+					}
+					else
+                    {
+						add(field.Name + ": " + field.GetValue(cmp));
+					}
+                }
+
+				result += SCOPE_END + "\n\n";
 			}
 
 			string path = Internal.GetCWD() +
@@ -486,6 +530,7 @@ namespace S2DCore
 			//split the file's contents
 			string[] split = file.Split(
 				':', 
+				';', 
 				'[', 
 				']', 
 				'\n', 
@@ -518,7 +563,6 @@ namespace S2DCore
 			bool position = false, 
 				scale = false, 
 				rotation = false;
-
 
 			//really awful spaghetti deserialization code with silly hacks
 			foreach (string item in filesplit)
@@ -584,7 +628,7 @@ namespace S2DCore
 
 		public float rotation = 0;
 		public int instanceID;
-		public SceneInstance? scene;
+		public SceneInstance scene;
 		public UpdateMode updateMode = UpdateMode.WhenLevelActive;
 
 		public int layer;
@@ -600,6 +644,7 @@ namespace S2DCore
 			actor.position = position;
 			actor.rotation = rotation;
 			actor.name = name;
+			actor.instanceID = S2Random.Range(0, int.MaxValue);
 			actor.SetScene(SceneManager.CurrentScene);
 			return actor;
 		}
@@ -619,8 +664,8 @@ namespace S2DCore
 			
 			clone.active = a.active;
 			clone.name = a.name;
-			
-			clone.scene = a.scene;
+
+			clone.SetScene(a.scene);
 			clone.updateMode = a.updateMode;
 
 			return clone;
@@ -670,7 +715,7 @@ namespace S2DCore
 	public class Component
 	{
 		public Actor actor;
-		public int intanceID;
+		public int instanceID;
 		public bool enabled = true;
 
 		public static T Add<T>(Actor to) where T :  Component, new()
@@ -684,6 +729,7 @@ namespace S2DCore
 			cmp.actor = to;
 			cmp.actor.components.AddOnce(cmp);
 			cmp.enabled = true;
+			cmp.Start();
 			return cmp;
 		}
 
@@ -726,8 +772,8 @@ namespace S2DCore
 
 		public void InitializeComponent(Component cmp)
 		{
+			instanceID = S2Random.Range(0, int.MaxValue);
 			UpdateManager.ActiveComponents.AddOnce(this);
-			Start();
 		}
 
 		~Component() {
