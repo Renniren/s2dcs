@@ -417,7 +417,7 @@ namespace S2DCore
 		#endregion
 	}
 
-	//forgive me for the awful, awful things done in this class
+	//forgive me for the awful, awful things done here
 	public class S2DSerializer
 	{
 		static string FILE_BEGIN = "FILE:\n";
@@ -452,6 +452,13 @@ namespace S2DCore
 				result += "\n" + v;
 			}
 
+			void log(object j)
+			{
+				Console.WriteLine(j);
+			}
+
+
+
 			List<Component> actor_components = new();
 			Actor act;
 
@@ -469,12 +476,12 @@ namespace S2DCore
 				add("define_actor " + act.name);
 				result += SCOPE_BEGIN;
 				
-				add("position " + act.position.ToString() + LINE_END);
-				add("rotation " + act.rotation.ToString() + LINE_END);
-				add("scale " + act.scale.ToString() + LINE_END);
-				add("active " + act.active.ToString() + LINE_END);
-				add("id " + act.instanceID.ToString() + LINE_END);
-				add("update " + act.updateMode.ToString() + LINE_END);
+				add("\tposition " + act.position.ToString() + LINE_END);
+				add("\trotation " + act.rotation.ToString() + LINE_END);
+				add("\tscale " + act.scale.ToString() + LINE_END);
+				add("\tactive " + act.active.ToString() + LINE_END);
+				add("\tid " + act.instanceID.ToString() + LINE_END);
+				add("\tupdate " + act.updateMode.ToString() + LINE_END);
 
 
 				result += SCOPE_END + "\n";
@@ -486,7 +493,7 @@ namespace S2DCore
 			for (int i = 0; i < actor_components.Count; i++)
 			{
 				cmp = actor_components[i];
-				result += cmp.GetType().Name + "";
+				result += "component " + cmp.GetType().Name + "";
 				result += SCOPE_BEGIN;
 
 				//because obviously it should be a component, so it'll have an actor
@@ -495,18 +502,36 @@ namespace S2DCore
 				//we can use to link together components and actors in deserialization
 				foreach (var field in cmp.GetType().GetFields())
 				{
+					//compare both the base and normal types to Actor and Component, 
+					//because the field may just be a bare Component or Actor
 					bool isActorOrComponent =
 						(field.Name == "actor") ||
+						field.FieldType == typeof(Component) ||
 						field.FieldType.BaseType == typeof(Component) ||
+						field.FieldType == typeof(Actor) ||
 						field.FieldType.BaseType == typeof(Actor);
 
-					bool isActor = field.FieldType.BaseType == typeof(Actor);
-					bool isComponent = field.FieldType.BaseType == typeof(Component);
+					bool isActor = field.FieldType.BaseType == typeof(Actor) ||
+						field.FieldType == typeof(Actor);
 
-					if (field.Name == "actor")
-					{
-						add(field.Name + ": " + cmp.actor.instanceID);
-					}
+					bool isComponent = field.FieldType.BaseType == typeof(Component) ||
+						field.FieldType == typeof(Component);
+
+					//I fucking hate this
+					//there HAS to be a better way of doing this
+					bool isStruct = 
+						field.FieldType.IsValueType &&
+						field.FieldType != typeof(int) &&
+						field.FieldType != typeof(void) &&
+						field.FieldType != typeof(byte) &&
+						field.FieldType != typeof(bool) &&
+						field.FieldType != typeof(float) &&
+						field.FieldType != typeof(char) &&
+						field.FieldType != typeof(string) &&
+						field.FieldType != typeof(double) &&
+						field.FieldType != typeof(decimal);
+
+					bool isArray = field.FieldType.IsArray;
 
 					if (isComponent)
 					{
@@ -515,18 +540,23 @@ namespace S2DCore
 						if (successfulcast)
 						{
 							//Console.WriteLine("OTHER COMPONENT'S NAME AND FIELD NAME: " + (field.GetValue(cmp) as Component).GetType().Name + ", " + field.Name);
-							add(field.Name + ": " + (field.GetValue(cmp) as Component).instanceID);
+							add("\t" +field.Name + ": " + (field.GetValue(cmp) as Component).instanceID);
 						}
+					}
+
+					if (isStruct)
+					{
+						log("field " + field.Name + " is a struct");
 					}
 
 					if (isActor)
 					{
-						add(field.Name + ": " + (field.GetValue(cmp) as Actor).instanceID);
+						add("\t" + field.Name + ": " + (field.GetValue(cmp) as Actor).instanceID);
 					}
 
 					if(!isActorOrComponent)
 					{
-						add(field.Name + ": " + field.GetValue(cmp));
+						add("\t" + field.Name + ": " + field.GetValue(cmp));
 					}
 				}
 
@@ -577,16 +607,23 @@ namespace S2DCore
 			string actor_name = "";
 			string position_s = "";
 			Actor new_actor = new Actor();
+			Component new_component = new Component();
+			Assembly current_assembly = Assembly.GetExecutingAssembly();
+			Assembly other_assembly = null; //we'll figure this out when we get there
 
 			List<string> contents = new();
 			List<Actor> actors = new();
+			List<Component> components = new();
 
 			bool inActorDefinition = false;
 			bool inActorNameDefinition = false;
+			bool inComponentsDefinition = false;
 
 			bool position = false, 
 				scale = false, 
 				rotation = false;
+
+			
 
 			//really awful spaghetti deserialization code with silly hacks
 			foreach (string item in filesplit)
@@ -596,12 +633,27 @@ namespace S2DCore
 					inActorNameDefinition = true;
 				}
 
-				if (item == "}")
+				if (item.Contains("COMPONENTS:"))
 				{
-					contents.Clear();
 					inActorDefinition = false;
 					inActorNameDefinition = false;
-					actors.Add(Actor.Copy(new_actor));
+					inComponentsDefinition = true;
+				}
+
+				if (item == "}")
+				{
+					if (inActorDefinition)
+					{
+						contents.Clear();
+						inActorDefinition = false;
+						inActorNameDefinition = false;
+						actors.Add(Actor.Copy(new_actor));
+					}
+
+					if (inComponentsDefinition)
+					{
+						inComponentsDefinition = false;
+					}
 				}
 
 				if (item == "{")

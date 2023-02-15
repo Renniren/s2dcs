@@ -48,6 +48,62 @@ namespace S2DComponents
         }
     }
 
+	public class InheritanceTestA : Component
+    {
+		public int someValue = 420;
+		public InheritanceTestA()
+        {
+			InitializeComponent(this);
+        }
+
+        public override void Start()
+        {
+			Internal.Log("hello from Test A");
+        }
+    }
+
+	public struct testStruct
+    {
+		public int myValue;
+		public float myOtherValue;
+    }
+
+
+
+    public class StructSerializationTestA : Component
+    {
+		public testStruct test;
+
+		public StructSerializationTestA()
+        {
+			InitializeComponent(this);
+        }
+
+        public override void Start()
+        {
+			test.myValue = 69;
+			test.myOtherValue = 1337;
+        }
+    }
+
+    public class InheritanceTestB : InheritanceTestA
+    {
+		public int someOtherValue = 69;
+		public InheritanceTestB()
+        {
+			InitializeComponent(this);
+        }
+
+        public override void Start()
+        {
+			//if this goes according to plan it should be A then B (which it is)
+			base.Start();
+			Internal.Log("hello from Test B"); 
+		}
+    }
+
+
+
     public class ComponentTest : Component
 	{
 		public ComponentTest()

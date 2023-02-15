@@ -17,10 +17,10 @@ class S2GameEntry
 
         
         Actor actor = Actor.Create(Vector2.zero, Vector2.one);
+        actor.name = "Test Subject";
+        actor.AddComponent<InheritanceTestB>();
 
-        actor.name = "Cool Name";
         SpriteRenderer sr = Component.Add<SpriteRenderer>(actor);
-        Component.Add<SpriteRenderer>(null);
         sr.sprite = new S2Sprite(Internal.GetCWD() + 
             Constants.TexturesPath + "squareSmall.png", 2);
 
@@ -36,6 +36,8 @@ class S2GameEntry
             Actor a = Actor.Create(Vector2.zero, Vector2.one, "new Actor " + i.ToString(), 0);
             SerializeTest test = a.AddComponent<SerializeTest>();
             SerializeTest test2 = a.AddComponent<SerializeTest>();
+            a.AddComponent<InheritanceTestB>(); //here's the FUN part
+            a.AddComponent<StructSerializationTestA>();
             
             test.value = S2Random.Range(0, 4);
             test.othervalue = S2Random.Range(0, 4);
