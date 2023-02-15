@@ -489,7 +489,6 @@ namespace S2DCore
 				result += cmp.GetType().Name + "";
 				result += SCOPE_BEGIN;
 
-
 				//because obviously it should be a component, so it'll have an actor
 				//which means we can simply use the actor's ID as the actor it belongs to, and if the
 				//field is a component (which it SHOULD be), we can use that component's instance ID, which
@@ -505,10 +504,10 @@ namespace S2DCore
 						//super awful dangerous cast magic, this is some of of the weirdest C# I've written
 						bool successfulcast = (field.GetValue(cmp) as Component) != null;
 						if (successfulcast)
-                        {
+						{
 							//Console.WriteLine("OTHER COMPONENT'S NAME AND FIELD NAME: " + (field.GetValue(cmp) as Component).GetType().Name + ", " + field.Name);
 							add(field.Name + ": " + (field.GetValue(cmp) as Component).instanceID);
-                        }
+						}
 					}
 					if(field.FieldType.BaseType != typeof(Component) && field.Name != "actor")
 					{
