@@ -500,11 +500,17 @@ namespace S2DCore
 					{
 						add(field.Name + ": " + cmp.actor.instanceID);
 					}
-					else if (field.FieldType.BaseType.GetType() == typeof(Component))
+					if (field.FieldType.BaseType == typeof(Component))
 					{
-						add(field.Name + ": " + (field.GetValue(cmp) as Component).instanceID); //this feels so evil
+						//super awful dangerous cast magic, this is some of of the weirdest C# I've written
+						bool successfulcast = (field.GetValue(cmp) as Component) != null;
+						if (successfulcast)
+                        {
+							//Console.WriteLine("OTHER COMPONENT'S NAME AND FIELD NAME: " + (field.GetValue(cmp) as Component).GetType().Name + ", " + field.Name);
+							add(field.Name + ": " + (field.GetValue(cmp) as Component).instanceID);
+                        }
 					}
-					else
+					if(field.FieldType.BaseType != typeof(Component) && field.Name != "actor")
 					{
 						add(field.Name + ": " + field.GetValue(cmp));
 					}
