@@ -456,8 +456,7 @@ namespace S2DCore
 			{
 				Console.WriteLine(j);
 			}
-
-
+			static void nop() { }; //this is here specifically for breakpoints
 
 			List<Component> actor_components = new();
 			Actor act;
@@ -517,19 +516,11 @@ namespace S2DCore
 					bool isComponent = field.FieldType.BaseType == typeof(Component) ||
 						field.FieldType == typeof(Component);
 
-					//I fucking hate this
-					//there HAS to be a better way of doing this
-					bool isStruct = 
+					bool isStruct =
 						field.FieldType.IsValueType &&
-						field.FieldType != typeof(int) &&
-						field.FieldType != typeof(void) &&
-						field.FieldType != typeof(byte) &&
-						field.FieldType != typeof(bool) &&
-						field.FieldType != typeof(float) &&
-						field.FieldType != typeof(char) &&
-						field.FieldType != typeof(string) &&
-						field.FieldType != typeof(double) &&
-						field.FieldType != typeof(decimal);
+						!field.FieldType.IsEnum &&
+						!field.FieldType.IsClass
+						&& !field.FieldType.IsPrimitive;
 
 					bool isArray = field.FieldType.IsArray;
 
@@ -544,9 +535,24 @@ namespace S2DCore
 						}
 					}
 
+					//I don't know what'll happen if there's a struct IN the struct but we'll figure that out too I guess
 					if (isStruct)
 					{
-						log("field " + field.Name + " is a struct");
+						log(field.FieldType.Name);
+						result += "\n" + field.Name + ": {";
+						
+						T reconstruct<T>() where T : new()
+						{
+							return new T();
+						}
+
+						foreach (var struct_field in field.FieldType.GetFields())
+						{
+							//that's enough for tonight
+							var thisisfuckingmiserable = struct_field.FieldType.GetConstructor(new Type[0]).Invoke(null);
+							add("\t" + struct_field.Name + ": " + struct_field.GetValue(thisisfuckingmiserable));
+						}
+						result += "\n}\n";
 					}
 
 					if (isActor)
@@ -572,8 +578,8 @@ namespace S2DCore
 
 			
 			File.WriteAllText(path + scene.name + ext, result);
+			nop();
 		}
-		enum scope {  actor_definition, };
 
 		//todo: after reconstructing actors we'll also need to reconstruct components, then 
 		//re-attach them to their actors or parent components using given IDs

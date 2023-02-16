@@ -64,8 +64,8 @@ namespace S2DComponents
 
 	public struct testStruct
     {
-		public int myValue;
-		public float myOtherValue;
+		public int mySuperFunnyValue;
+		public float myOtherFunnyValue;
     }
 
 
@@ -81,8 +81,8 @@ namespace S2DComponents
 
         public override void Start()
         {
-			test.myValue = 69;
-			test.myOtherValue = 1337;
+			test.mySuperFunnyValue = 69;
+			test.myOtherFunnyValue = 1337;
         }
     }
 
