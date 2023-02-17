@@ -501,6 +501,7 @@ namespace S2DCore
 				//we can use to link together components and actors in deserialization
 				foreach (var field in cmp.GetType().GetFields())
 				{
+						log(field.FieldType.Name);
 					//compare both the base and normal types to Actor and Component, 
 					//because the field may just be a bare Component or Actor
 					bool isActorOrComponent =
@@ -538,20 +539,8 @@ namespace S2DCore
 					//I don't know what'll happen if there's a struct IN the struct but we'll figure that out too I guess
 					if (isStruct)
 					{
-						log(field.FieldType.Name);
 						result += "\n" + field.Name + ": {";
-						
-						T reconstruct<T>() where T : new()
-						{
-							return new T();
-						}
 
-						foreach (var struct_field in field.FieldType.GetFields())
-						{
-							//that's enough for tonight
-							var thisisfuckingmiserable = struct_field.FieldType.GetConstructor(new Type[0]).Invoke(null);
-							add("\t" + struct_field.Name + ": " + struct_field.GetValue(thisisfuckingmiserable));
-						}
 						result += "\n}\n";
 					}
 
