@@ -502,9 +502,8 @@ namespace S2DCore
 				//which means we can simply use the actor's ID as the actor it belongs to, and if the
 				//field is a component (which it SHOULD be), we can use that component's instance ID, which
 				//we can use to link together components and actors in deserialization
-				foreach (var field in cmp.GetType().GetFields())
+				foreach (var field in cmp.GetType().GetRuntimeFields())
 				{
-						log(field.FieldType.Name);
 					//compare both the base and normal types to Actor and Component, 
 					//because the field may just be a bare Component or Actor
 					bool isActorOrComponent =
@@ -527,7 +526,8 @@ namespace S2DCore
 						&& !field.FieldType.IsPrimitive;
 
 					bool isArray = field.FieldType.IsArray;
-
+					
+					log(field.FieldType.Name + isStruct + isComponent + isActor);
 					if (isComponent)
 					{
 						//super awful dangerous cast magic, this is some of of the weirdest C# I've written
@@ -542,9 +542,15 @@ namespace S2DCore
 					//I don't know what'll happen if there's a struct IN the struct but we'll figure that out too I guess
 					if (isStruct)
 					{
-						result += "\n" + field.Name + ": {";
+						result += "\n\t" + field.FieldType.Name + " " + field.Name + ": {";
+						Type s = field.GetValue(cmp).GetType();
+                        foreach (var struct_field in field.GetValue(cmp).GetType().GetFields())
+                        {
+							result += "\n\t" + struct_field.Name + ": " + struct_field.
+								GetValue(field.GetValue(cmp)).ToString();
+                        }
 
-						result += "\n}\n";
+						result += "\n\t}\n";
 					}
 
 					if (isActor)
@@ -552,7 +558,7 @@ namespace S2DCore
 						add("\t" + field.Name + ": " + (field.GetValue(cmp) as Actor).instanceID);
 					}
 
-					if(!isActorOrComponent)
+					if(!isActorOrComponent && !isStruct)
 					{
 						add("\t" + field.Name + ": " + field.GetValue(cmp));
 					}
