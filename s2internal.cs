@@ -74,7 +74,40 @@ namespace S2DCore
 	public enum DrawMode { WhenLevelActive, DrawAlways, DontDraw };
 	public enum LoadLevelType { Override, Background };
 
+	[System.AttributeUsage(System.AttributeTargets.Struct)]
+	public class SerializeStruct : System.Attribute
+	{
+		public SerializeStruct()
+		{
 
+		}
+	}
+
+	[System.AttributeUsage(System.AttributeTargets.Struct)]
+	public class AllowOnlyOneComponent : System.Attribute
+	{
+		public AllowOnlyOneComponent()
+		{
+			
+		}
+	}
+
+
+
+	public class Object
+	{
+		public override string ToString()
+		{
+			string result = "";
+
+			foreach (var field in GetType().GetFields())
+			{
+
+			}
+
+			return result;
+		}
+	}
 
 	public class World
 	{
@@ -138,8 +171,20 @@ namespace S2DCore
 
 	public class S2DContext
 	{
-		public RenderWindow? MainWindow;
+		public RenderWindow? MainWindow 
+		{ 
+			get
+			{
+				return Windows[0];
+			}
+
+			set
+			{
+				MainWindow = value;
+			}
+		}
 		public string WindowName = "game";
+		public List<RenderWindow> Windows;
 	}
 
 	public class S2Sprite
@@ -193,6 +238,13 @@ namespace S2DCore
 	{
 		public float
 			r, g, b, a;
+
+		#region Casts
+		public static implicit operator SFML.Graphics.Color(Color c)
+		{
+			return new SFML.Graphics.Color((byte)c.r, (byte)c.g, (byte)c.b, (byte)c.a);
+		}
+		#endregion
 
 		#region Constructors
 		public Color(float r, float g, float b, float a)
@@ -258,7 +310,6 @@ namespace S2DCore
 			a.a /= b.a;
 			return c;
 		}
-
 
 		public static Color operator /(Color a, float b)
 		{
