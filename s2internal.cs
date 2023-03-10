@@ -74,9 +74,12 @@ namespace S2DCore
 	public enum DrawMode { WhenLevelActive, DrawAlways, DontDraw };
 	public enum LoadLevelType { Override, Background };
 
+	public class Object
+    {
 
+    }
 
-	public class World
+    public class World
 	{
 		public string name = "world";
 		public float Gravity = -9.81f;
