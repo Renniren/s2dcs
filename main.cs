@@ -61,7 +61,7 @@ class S2GameEntry
         while (Internal.context.MainWindow.IsOpen)
         {
             Internal.context.MainWindow.DispatchEvents();
-
+             
             actor.position = Internal.context.MainWindow.DefaultView.Center;
             Internal.context.MainWindow.Clear();
             actor.scale = new Vector2(1, 1);
