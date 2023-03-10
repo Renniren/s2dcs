@@ -74,42 +74,12 @@ namespace S2DCore
 	public enum DrawMode { WhenLevelActive, DrawAlways, DontDraw };
 	public enum LoadLevelType { Override, Background };
 
-	[System.AttributeUsage(System.AttributeTargets.Struct)]
-	public class SerializeStruct : System.Attribute
-	{
-		public SerializeStruct()
-		{
-
-		}
-	}
-
-	[System.AttributeUsage(System.AttributeTargets.Struct)]
-	public class AllowOnlyOneComponent : System.Attribute
-	{
-		public AllowOnlyOneComponent()
-		{
-			
-		}
-	}
-
-
-
 	public class Object
-	{
-		public override string ToString()
-		{
-			string result = "";
+    {
 
-			foreach (var field in GetType().GetFields())
-			{
+    }
 
-			}
-
-			return result;
-		}
-	}
-
-	public class World
+    public class World
 	{
 		public string name = "world";
 		public float Gravity = -9.81f;
@@ -171,20 +141,8 @@ namespace S2DCore
 
 	public class S2DContext
 	{
-		public RenderWindow? MainWindow 
-		{ 
-			get
-			{
-				return Windows[0];
-			}
-
-			set
-			{
-				MainWindow = value;
-			}
-		}
+		public RenderWindow? MainWindow;
 		public string WindowName = "game";
-		public List<RenderWindow> Windows;
 	}
 
 	public class S2Sprite
@@ -238,13 +196,6 @@ namespace S2DCore
 	{
 		public float
 			r, g, b, a;
-
-		#region Casts
-		public static implicit operator SFML.Graphics.Color(Color c)
-		{
-			return new SFML.Graphics.Color((byte)c.r, (byte)c.g, (byte)c.b, (byte)c.a);
-		}
-		#endregion
 
 		#region Constructors
 		public Color(float r, float g, float b, float a)
@@ -310,6 +261,7 @@ namespace S2DCore
 			a.a /= b.a;
 			return c;
 		}
+
 
 		public static Color operator /(Color a, float b)
 		{
@@ -550,9 +502,8 @@ namespace S2DCore
 				//which means we can simply use the actor's ID as the actor it belongs to, and if the
 				//field is a component (which it SHOULD be), we can use that component's instance ID, which
 				//we can use to link together components and actors in deserialization
-				foreach (var field in cmp.GetType().GetFields())
+				foreach (var field in cmp.GetType().GetRuntimeFields())
 				{
-						log(field.FieldType.Name);
 					//compare both the base and normal types to Actor and Component, 
 					//because the field may just be a bare Component or Actor
 					bool isActorOrComponent =
@@ -575,7 +526,8 @@ namespace S2DCore
 						&& !field.FieldType.IsPrimitive;
 
 					bool isArray = field.FieldType.IsArray;
-
+					
+					log(field.FieldType.Name + isStruct + isComponent + isActor);
 					if (isComponent)
 					{
 						//super awful dangerous cast magic, this is some of of the weirdest C# I've written
@@ -590,9 +542,15 @@ namespace S2DCore
 					//I don't know what'll happen if there's a struct IN the struct but we'll figure that out too I guess
 					if (isStruct)
 					{
-						result += "\n" + field.Name + ": {";
+						result += "\n\t" + field.FieldType.Name + " " + field.Name + ": {";
+						Type s = field.GetValue(cmp).GetType();
+                        foreach (var struct_field in field.GetValue(cmp).GetType().GetFields())
+                        {
+							result += "\n\t" + struct_field.Name + ": " + struct_field.
+								GetValue(field.GetValue(cmp)).ToString();
+                        }
 
-						result += "\n}\n";
+						result += "\n\t}\n";
 					}
 
 					if (isActor)
@@ -600,7 +558,7 @@ namespace S2DCore
 						add("\t" + field.Name + ": " + (field.GetValue(cmp) as Actor).instanceID);
 					}
 
-					if(!isActorOrComponent)
+					if(!isActorOrComponent && !isStruct)
 					{
 						add("\t" + field.Name + ": " + field.GetValue(cmp));
 					}
