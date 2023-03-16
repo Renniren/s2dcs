@@ -507,7 +507,6 @@ namespace S2DCore
 					//compare both the base and normal types to Actor and Component, 
 					//because the field may just be a bare Component or Actor
 					bool isActorOrComponent =
-						(field.Name == "actor") ||
 						field.FieldType == typeof(Component) ||
 						field.FieldType.BaseType == typeof(Component) ||
 						field.FieldType == typeof(Actor) ||
@@ -527,7 +526,7 @@ namespace S2DCore
 
 					bool isArray = field.FieldType.IsArray;
 					
-					log(field.FieldType.Name + isStruct + isComponent + isActor);
+					log(field.FieldType.Name);
 					if (isComponent)
 					{
 						//super awful dangerous cast magic, this is some of of the weirdest C# I've written
