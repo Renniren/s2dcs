@@ -42,9 +42,14 @@ namespace S2DCore
 		{
 			if (context == null)
 			{
+
+
+
 				context = new();
 				context.MainWindow = new(new VideoMode(640, 480),
 					"game", Styles.Default);
+				
+
 				return true;
 			}
 
@@ -70,16 +75,79 @@ namespace S2DCore
 		}
 	}
 
+	public static class Input
+	{
+
+	}
+
+	public static class S2GUI
+	{
+		public static List<Element> ActiveElements = new();
+
+		public class Element
+		{
+			public float name;
+			public bool movable = true;
+			public bool collapsable = false;
+			public bool active = true;
+
+			public Vector2 position;
+			public Vector2 size;
+			bool init;
+
+			public void Initialize()
+			{
+				if (!init)
+				{
+					ActiveElements.AddOnce(this);
+					init = true;
+				}
+			}
+
+			public Element()
+			{
+
+			}
+
+			public virtual void Update()
+			{
+
+			}
+		}
+
+		public class Panel : Element
+		{
+			RectangleShape shape;
+
+			public Panel(int width, int height) 
+			{
+				shape = new();
+				size = new(width, height);
+				shape.Size = size;
+				shape.FillColor = new(16, 32, 64, 128);
+
+				Initialize();
+			}
+
+			public override void Update()
+			{
+				shape.Size = size;
+				Internal.context.MainWindow.Draw(shape);
+				base.Update();
+			}
+		}
+	}
+
 	public enum UpdateMode { WhenLevelActive, Always };
 	public enum DrawMode { WhenLevelActive, DrawAlways, DontDraw };
 	public enum LoadLevelType { Override, Background };
 
 	public class Object
-    {
+	{
 
-    }
+	}
 
-    public class World
+	public class World
 	{
 		public string name = "world";
 		public float Gravity = -9.81f;
@@ -143,7 +211,11 @@ namespace S2DCore
 	{
 		public RenderWindow? MainWindow;
 		public string WindowName = "game";
+
+		
 	}
+
+
 
 	public class S2Sprite
 	{
@@ -153,8 +225,6 @@ namespace S2DCore
 		public Vector2 offset;
 		public Texture spriteTexture;
 		public Sprite sprite;
-
-		
 
 		public S2Sprite(string path, int id)
 		{
@@ -231,6 +301,13 @@ namespace S2DCore
 		}
 		#endregion
 
+		#region Casts
+		public static implicit operator SFML.Graphics.Color(Color c)
+		{
+			return new((byte)c.r, (byte)c.g, (byte)c.b, (byte)c.a);
+		}
+		#endregion
+
 		#region Operators
 		public static Color operator +(Color a, Color b)
 		{
@@ -304,6 +381,22 @@ namespace S2DCore
 		public override string ToString()
 		{
 			return "(" + x.ToString() + ", " + y.ToString() + ")";
+		}
+
+		public static Vector2 Random(float limit)
+		{
+			return new Vector2(S2Random.Range(-limit, limit), S2Random.Range(-limit, limit));
+		}
+
+		public static Vector2 Parse(string from)
+		{
+			Vector2 result = new();
+			string[] split = from.Split('(', ' ', ',', ')');
+
+			result.x = (float)double.Parse(split[1]);
+			result.y = (float)double.Parse(split[split.Length - 2]);
+
+			return result;
 		}
 
 		#region Class Methods
@@ -478,36 +571,64 @@ namespace S2DCore
 				add("define_actor " + act.name);
 				result += SCOPE_BEGIN;
 				
-				add("\tposition " + act.position.ToString() + LINE_END);
-				add("\trotation " + act.rotation.ToString() + LINE_END);
-				add("\tscale " + act.scale.ToString() + LINE_END);
-				add("\tactive " + act.active.ToString() + LINE_END);
-				add("\tid " + act.instanceID.ToString() + LINE_END);
-				add("\tupdate " + act.updateMode.ToString() + LINE_END);
+				add("\tposition " + act.position.ToString() +		LINE_END);
+				add("\trotation " + act.rotation.ToString() +		LINE_END);
+				add("\tscale " + act.scale.ToString() +				LINE_END);
+				add("\tactive " + act.active.ToString() +				LINE_END);
+				if (act.parent != null)
+				{
+					add("\tparent " + act.parent.instanceID);
+				}
+				else
+				{
+					add("\tparent null");
+				}
 
+				if (act.scene != null)
+				{
+					add("\tscene " + act.scene.instanceOf.name + LINE_END);
+				}
+				else
+				{
+					add("\tscene null");
+				}
+
+				add("\tid " + act.instanceID.ToString() +			LINE_END);
+				add("\tlayer " + act.layer.ToString() +					LINE_END);
+				add("\tupdate " + act.updateMode.ToString() +	LINE_END);
+				add("\t");
+				add("\ttags: ");
+
+				if (act.Tags.Count != 0)
+				{
+					for (int b = 0; b < act.Tags.Count; b++)
+					{
+						add("\t\t" + act.Tags[b]);
+					}
+				}
 
 				result += SCOPE_END + "\n";
 			}
 
 			result += "\nCOMPONENTS:\n";
-
 			Component cmp;
+
 			for (int i = 0; i < actor_components.Count; i++)
 			{
 				cmp = actor_components[i];
-				result += "component " + cmp.GetType().Name + "";
+				result += "component " + cmp.GetType().FullName + "";
 				result += SCOPE_BEGIN;
 
 				//because obviously it should be a component, so it'll have an actor
 				//which means we can simply use the actor's ID as the actor it belongs to, and if the
 				//field is a component (which it SHOULD be), we can use that component's instance ID, which
 				//we can use to link together components and actors in deserialization
+
 				foreach (var field in cmp.GetType().GetRuntimeFields())
 				{
 					//compare both the base and normal types to Actor and Component, 
 					//because the field may just be a bare Component or Actor
 					bool isActorOrComponent =
-						(field.Name == "actor") ||
 						field.FieldType == typeof(Component) ||
 						field.FieldType.BaseType == typeof(Component) ||
 						field.FieldType == typeof(Actor) ||
@@ -522,12 +643,14 @@ namespace S2DCore
 					bool isStruct =
 						field.FieldType.IsValueType &&
 						!field.FieldType.IsEnum &&
-						!field.FieldType.IsClass
-						&& !field.FieldType.IsPrimitive;
+						!field.FieldType.IsClass &&
+						!field.FieldType.IsPrimitive;
 
+					bool isString = field.FieldType == typeof(string);
 					bool isArray = field.FieldType.IsArray;
+					bool isClass = field.FieldType.IsClass && !isComponent && !isActor;
 					
-					log(field.FieldType.Name + isStruct + isComponent + isActor);
+					log(field.FieldType.Name);
 					if (isComponent)
 					{
 						//super awful dangerous cast magic, this is some of of the weirdest C# I've written
@@ -535,32 +658,51 @@ namespace S2DCore
 						if (successfulcast)
 						{
 							//Console.WriteLine("OTHER COMPONENT'S NAME AND FIELD NAME: " + (field.GetValue(cmp) as Component).GetType().Name + ", " + field.Name);
-							add("\t" +field.Name + ": " + (field.GetValue(cmp) as Component).instanceID);
+							add("\t" + field.FieldType.FullName + " " + field.Name + " " + (field.GetValue(cmp) as Component).instanceID);
 						}
 					}
 
 					//I don't know what'll happen if there's a struct IN the struct but we'll figure that out too I guess
+					//perhaps we'll have to use recursion for that
 					if (isStruct)
 					{
-						result += "\n\t" + field.FieldType.Name + " " + field.Name + ": {";
+						result += "\n\t" + field.FieldType.FullName + " " + field.Name + " {";
 						Type s = field.GetValue(cmp).GetType();
-                        foreach (var struct_field in field.GetValue(cmp).GetType().GetFields())
-                        {
-							result += "\n\t" + struct_field.Name + ": " + struct_field.
+						foreach (var struct_field in field.GetValue(cmp).GetType().GetFields())
+						{
+							result += "\n\t\t" + struct_field.Name + ": " + struct_field.
 								GetValue(field.GetValue(cmp)).ToString();
-                        }
+						}
+
+						result += "\n\t}\n";
+					}
+
+					if (isString)
+					{
+						result += "\n\t" + field.FieldType.FullName + " " + field.Name + " " + "\"" + field.GetValue(cmp) + "\"";
+					}
+
+					if (isClass && !isString)
+					{
+						result += "\n\t" + field.FieldType.FullName + " " + field.Name + ": {";
+						Type s = field.GetValue(cmp).GetType();
+						foreach (var class_field in field.GetValue(cmp).GetType().GetFields())
+						{
+							result += "\n\t\t" + class_field.Name + ": " + class_field.
+								GetValue(field.GetValue(cmp)).ToString();
+						}
 
 						result += "\n\t}\n";
 					}
 
 					if (isActor)
 					{
-						add("\t" + field.Name + ": " + (field.GetValue(cmp) as Actor).instanceID);
+						add("\t" + field.FieldType.Name + " " + field.Name + ": " + (field.GetValue(cmp) as Actor).instanceID);
 					}
 
-					if(!isActorOrComponent && !isStruct)
+					if(!isActorOrComponent && !isStruct && !isClass)
 					{
-						add("\t" + field.Name + ": " + field.GetValue(cmp));
+						add("\t" + field.FieldType.Name + " " + field.Name + " " + field.GetValue(cmp));
 					}
 				}
 
@@ -581,13 +723,13 @@ namespace S2DCore
 
 		//todo: after reconstructing actors we'll also need to reconstruct components, then 
 		//re-attach them to their actors or parent components using given IDs
-
-		public static  void LoadScene(string path)
+		public static void LoadScene(string path)
 		{
 			string file = File.ReadAllText(path);
 			//split the file's contents
 			string[] split = file.Split(
 				':', 
+				' ', 
 				';', 
 				'[', 
 				']', 
@@ -600,7 +742,7 @@ namespace S2DCore
 			List<string> non_whitespace = new();
 			foreach (var item in split)
 			{
-				if (!string.IsNullOrWhiteSpace(item)) non_whitespace.Add(item);
+				if(!string.IsNullOrWhiteSpace(item))non_whitespace.Add(item);
 			}
 
 			static void nop() { }; //this is here specifically for breakpoints
@@ -611,6 +753,7 @@ namespace S2DCore
 			string actor_name = "";
 			string position_s = "";
 			Actor new_actor = new Actor();
+			new_actor.name = "";
 			Component new_component = new Component();
 			Assembly current_assembly = Assembly.GetExecutingAssembly();
 			Assembly other_assembly = null; //we'll figure this out when we get there
@@ -621,79 +764,163 @@ namespace S2DCore
 
 			bool inActorDefinition = false;
 			bool inActorNameDefinition = false;
-			bool inComponentsDefinition = false;
+			bool inComponentDefinition = false;
 
 			bool position = false, 
 				scale = false, 
 				rotation = false;
 
-			
+			string[] keywords = {
+				"define_actor",
+				"component",
+				};
+
+			Type newType;
+
+			void resetActor()
+			{
+				new_actor = new();
+				new_actor.name = "";
+			}
+
+			Scene reconstructedScene = new();
 
 			//really awful spaghetti deserialization code with silly hacks
-			foreach (string item in filesplit)
+			for (int i = 0; i < filesplit.Length; i++)
 			{
-				if (item.Contains("define_actor"))
+				string item = filesplit[i];
+				int next = i + 1;
+				next = Math.Clamp(next, 0, filesplit.Length - 1);
+				string item_next = filesplit[next];
+
+				if (item.Contains(keywords[0]))
 				{
+					inActorDefinition = true;
 					inActorNameDefinition = true;
-				}
-
-				if (item.Contains("COMPONENTS:"))
-				{
-					inActorDefinition = false;
-					inActorNameDefinition = false;
-					inComponentsDefinition = true;
-				}
-
-				if (item == "}")
-				{
-					if (inActorDefinition)
-					{
-						contents.Clear();
-						inActorDefinition = false;
-						inActorNameDefinition = false;
-						actors.Add(Actor.Copy(new_actor));
-					}
-
-					if (inComponentsDefinition)
-					{
-						inComponentsDefinition = false;
-					}
-				}
-
-				if (item == "{")
-				{
-					if (inActorNameDefinition)
-					{
-						inActorDefinition = true;
-						inActorNameDefinition = false;
-
-						string real_name = actor_name.Replace("define_actor", string.Empty);
-						real_name = real_name.Trim();
-						new_actor.name = real_name;
-						actor_name = "";
-					}
-				}
-
-				if (inActorNameDefinition)
-				{
-					actor_name += item;
+					continue;
 				}
 
 				if (inActorDefinition)
 				{
-					if (item.Contains("position"))
+					if (item == "{")
+					{
+						inActorNameDefinition = false;
+					}
+
+					if (item == "}")
+					{
+						actors.Add(new_actor);
+						resetActor();
+
+						inActorDefinition = false;
+						inActorNameDefinition = false;
+					}
+
+					if (item == "position")
 					{
 						position = true;
 						continue;
 					}
 
+					if (item == "rotation")
+					{
+						rotation = true;
+						continue;
+					}
+
+					if (item == "scale")
+					{
+						scale = true;
+						continue;
+					}
+
+					if (item == "active")
+					{
+						new_actor.active = bool.Parse(item_next);
+					}
+
+					if (item == "id")
+					{
+						new_actor.instanceID = int.Parse(item_next);
+					}
+
+					if (item == "update")
+					{
+						if (item_next == "WhenLevelActive")
+						{
+							new_actor.updateMode = UpdateMode.WhenLevelActive;
+						}
+
+						if (item_next == "Always")
+						{
+							new_actor.updateMode = UpdateMode.Always;
+						}
+					}
+
+					//well - obviously if it's in this file it's in this scene, so we'll just link these up last, after the scene has been
+					//reconstructed
+					//if (item == "scene")
+					
 					if (position)
 					{
-						position_s += item;
+						string pos_string = item + item_next;
+						Vector2 parsed = Vector2.Parse(pos_string);
+						new_actor.position = parsed;
+						position = false;
+					}
+
+					if (rotation)
+					{
+						new_actor.rotation = float.Parse(item);
+						rotation = false;
+					}
+					
+					if (scale)
+					{
+						string pos_string = item + item_next;
+						Vector2 parsed = Vector2.Parse(pos_string);
+						new_actor.scale = parsed;
+						scale = false;
+					}
+
+					if (inActorNameDefinition)
+					{
+						new_actor.name += item + " ";
+					}
+				}
+
+				if (item == "COMPONENTS:")
+				{
+					inActorDefinition = false;
+					inActorNameDefinition = false;
+				}
+
+				if (item.Contains(keywords[1]))
+				{
+					newType = Type.GetType(item_next);
+					if(newType != null)Activator.CreateInstance(newType);
+					continue;
+				}
+
+				if (item == "{")
+				{
+					inComponentDefinition = true;
+					continue;
+				}
+
+				if (inComponentDefinition)
+				{
+					Type field_type = Type.GetType(item);
+					if (field_type != null)
+					{
+						
 					}
 				}
 			}
 
+			reconstructedScene.actors = actors;
+
+			GC.Collect();
 			nop();
 		}
 	}
@@ -701,6 +928,7 @@ namespace S2DCore
 	[System.Serializable]
 	public class Actor
 	{
+		public Actor parent = null;
 		public bool active;
 		public string name = "New Actor";
 		public Vector2 
@@ -713,8 +941,8 @@ namespace S2DCore
 
 		public int layer;
 		public List<string> Tags = new List<string>();
-
 		public List<Component> components = new();
+
 
 		public static Actor Create(Vector2 position, Vector2 scale, string name = "new Actor", float rotation = 0)
 		{
@@ -751,8 +979,6 @@ namespace S2DCore
 			return clone;
 		}
 
-
-
 		public T GetComponent<T>() where T : Component, new()
 		{
 			return Component.Get<T>(this);
@@ -762,8 +988,6 @@ namespace S2DCore
 		{
 			return Component.Add<T>(this);
 		}
-
-
 
 		public void SetScene(SceneInstance destination)
 		{
@@ -848,12 +1072,10 @@ namespace S2DCore
 			v = null;
 		}
 
-
-
 		public void InitializeComponent(Component cmp)
 		{
 			instanceID = S2Random.Range(0, int.MaxValue);
-			UpdateManager.ActiveComponents.AddOnce(this);
+			UpdateManager.ActiveComponents.AddOnce(cmp);
 		}
 
 		~Component() {
@@ -934,6 +1156,12 @@ namespace S2DCore
 						}
 						break;
 				}
+			}
+
+			for (int i = 0; i < S2GUI.ActiveElements.Count; i++)
+			{
+				if (!S2GUI.ActiveElements[i].active) continue;
+				S2GUI.ActiveElements[i].Update();
 			}
 		}
 	}
