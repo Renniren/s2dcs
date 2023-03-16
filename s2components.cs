@@ -22,12 +22,15 @@ namespace S2DComponents
 {
 	public class TextureManager
 	{
-		public S2Sprite CreateSprite(string path)
+		public static S2Sprite CreateSprite(string path)
 		{
-
-			return new S2Sprite("", Constants.NullTextureID);
+			
+			return new S2Sprite(Internal.GetCWD() +
+			Constants.TexturesPath + path, S2Random.Range(int.MinValue, int.MaxValue));
 		}
 	}
+
+	public enum testEnum { optionA, optionB }
 
 	public class SerializeTest : Component
     {
@@ -36,6 +39,8 @@ namespace S2DComponents
 		public int anothervalue = 0;
 		public SerializeTest otherTestComponent;
 		public Actor FunnyActor;
+		public testEnum myenum;
+		public string testString;
 
 		public SerializeTest()
         {
@@ -44,6 +49,8 @@ namespace S2DComponents
 
         public override void Start()
         {
+			testString = "fuckfuck";
+			myenum = testEnum.optionB;
 			Console.WriteLine(actor.name + ": " + value);
         }
     }
@@ -66,23 +73,33 @@ namespace S2DComponents
     {
 		public int mySuperFunnyValue;
 		public float myOtherFunnyValue;
+		public string myString;
     }
 
+	public class testClass
+	{
+		public int shit = -1;
+	}
 
-
-    public class StructSerializationTestA : Component
+	public class StructSerializationTestA : Component
     {
 		public testStruct test;
+		public testClass tc;
+		public Vector2 vector;
 
 		public StructSerializationTestA()
         {
 			InitializeComponent(this);
+			tc = new();
         }
 
         public override void Start()
         {
 			test.mySuperFunnyValue = 69;
-			test.myOtherFunnyValue = 1337;
+			test.myOtherFunnyValue = 13.37f;
+			test.myString = "oh no...";
+			vector = Vector2.Random(69);
+			tc.shit = 143;
         }
     }
 
