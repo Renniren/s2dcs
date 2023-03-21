@@ -2,6 +2,12 @@
 using S2DCore;
 using S2DComponents;
 
+using SFML;
+using SFML.Audio;
+using SFML.Graphics;
+using SFML.System;
+using SFML.Window;
+
 class S2GameEntry
 {
 
@@ -13,7 +19,7 @@ class S2GameEntry
 
             serializetest.name = "TestScene";
             serializetest.world = new();
-            serializetest.world.backgroundColor = new Color(0.5f, 0, 0, 1);
+            serializetest.world.backgroundColor = new S2DCore.Color(0.5f, 0, 0, 1);
 
             for (int i = 1; i <= 64; i++)
             {
@@ -72,12 +78,14 @@ class S2GameEntry
 
         RunSerializationTest();
         while (Internal.context.MainWindow.IsOpen)
-        {
+        { 
+            Internal.context.MainWindow.SetView(Internal.calcView((Vector2f)Internal.context.MainWindow.Size, 0, 1));
             Internal.context.MainWindow.DispatchEvents();
              
             actor.position = Internal.context.MainWindow.DefaultView.Center;
             Internal.context.MainWindow.Clear();
             actor.scale = new Vector2(1, 1);
+            actor.position = Internal.context.MainWindow.GetView().Center;
 
             UpdateManager.UpdateEngine();
 

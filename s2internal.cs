@@ -8,11 +8,11 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-using SFML;
-using SFML.Audio;
-using SFML.Graphics;
-using SFML.System;
-using SFML.Window;
+	using SFML;
+	using SFML.Audio;
+	using SFML.Graphics;
+	using SFML.System;
+	using SFML.Window;
 
 using Box2DX;
 using Box2DX.Collision;
@@ -36,6 +36,29 @@ namespace S2DCore
 		public static string GetCWD()
 		{
 			return System.IO.Directory.GetCurrentDirectory();
+		}
+
+		public static View calcView(Vector2f windowSize, float minRatio, float maxRatio)
+		{
+			Vector2f viewSize = windowSize;
+
+			// clip ratio
+			float ratio = viewSize.X / viewSize.Y;
+			if (ratio < minRatio) // too high
+				viewSize.Y = viewSize.X / minRatio;
+			else if (ratio > maxRatio) // too wide
+				viewSize.X = viewSize.Y * maxRatio;
+
+			View view = new(new FloatRect(new Vector2(), viewSize));
+
+			FloatRect viewport = new((windowSize - viewSize) / 2.0f, viewSize);
+			viewport.Left /= windowSize.X;
+			viewport.Top /= windowSize.Y;
+			viewport.Width /= windowSize.X;
+			viewport.Height /= windowSize.Y;
+			view.Viewport = (viewport);
+
+			return view;
 		}
 
 		public static bool CreateContext()
@@ -84,6 +107,47 @@ namespace S2DCore
 	{
 		public static List<Element> ActiveElements = new();
 
+		public static RenderWindow MainWindow
+        {
+			get
+            {
+				return Internal.context.MainWindow;
+            }
+        }
+        public static Vector2 Center
+        {
+			get
+            {
+				return MainWindow.GetView().Center;
+            }
+        }
+        public static Vector2 TopCenter
+		{
+			get
+			{
+				return 
+					(Vector2f)Center + new Vector2f(0, MainWindow.GetView().Viewport.Top/2);
+			}
+		}
+
+		public static Vector2 BottomCenter
+		{
+			get
+			{
+				return
+					Internal.context.MainWindow.GetView().Center -
+					new Vector2f(0, Internal.context.MainWindow.GetView().Viewport.Height / 2);
+			}
+		}
+
+		public static Vector2 CenterLeft;
+		public static Vector2 CenterRight;
+		public static Vector2 TopLeft;
+		public static Vector2 TopRight;
+		public static Vector2 BottomRight;
+		public static Vector2 BottomLeft;
+
+
 		public class Element
 		{
 			public float name;
@@ -91,6 +155,7 @@ namespace S2DCore
 			public bool collapsable = false;
 			public bool active = true;
 
+			public Vector2 anchor = TopCenter;
 			public Vector2 position;
 			public Vector2 size;
 			bool init;
@@ -132,6 +197,7 @@ namespace S2DCore
 			public override void Update()
 			{
 				shape.Size = size;
+				shape.Position = anchor + position;
 				Internal.context.MainWindow.Draw(shape);
 				base.Update();
 			}
@@ -222,6 +288,8 @@ namespace S2DCore
 		public string path;
 		public int id;
 
+		public Vector2 position;
+		public Vector2 align;
 		public Vector2 offset;
 		public Texture spriteTexture;
 		public Sprite sprite;
@@ -237,11 +305,13 @@ namespace S2DCore
 
 			SetScale(Vector2.one);
 			offset = Vector2.zero;
+			align = new Vector2(sprite.GetGlobalBounds().Width / 2, sprite.GetGlobalBounds().Height / 2);
 		}
 
 		public void SetPosition(Vector2 pos)
 		{
-			sprite.Position = pos + offset;
+			sprite.Position = pos + offset - align;
+			position = pos + offset - align;
 		}
 
 		public void SetRotation(float r)
@@ -596,7 +666,6 @@ namespace S2DCore
 				add("\tid " + act.instanceID.ToString() +			LINE_END);
 				add("\tlayer " + act.layer.ToString() +					LINE_END);
 				add("\tupdate " + act.updateMode.ToString() +	LINE_END);
-				add("\t");
 				add("\ttags: ");
 
 				if (act.Tags.Count != 0)
@@ -606,6 +675,8 @@ namespace S2DCore
 						add("\t\t" + act.Tags[b]);
 					}
 				}
+
+				add("\tend_tags");
 
 				result += SCOPE_END + "\n";
 			}
@@ -1127,6 +1198,7 @@ namespace S2DCore
 
 	public static class UpdateManager
 	{
+		public static List<Component> InvalidComponents = new();
 		public static List<Component> ActiveComponents = new();
 		public static List<Actor> ActiveActors = new();
 
@@ -1137,6 +1209,12 @@ namespace S2DCore
 			{
 				cmp = ActiveComponents[i];
 				if (cmp == null) continue;
+				if (cmp.actor == null)
+                {
+					InvalidComponents.AddOnce(cmp);
+					continue;
+                }
+
 				if (!cmp.enabled) continue;
 				if (!cmp.actor.active) continue;
 				switch(cmp.actor.updateMode)
@@ -1162,6 +1240,12 @@ namespace S2DCore
 			{
 				if (!S2GUI.ActiveElements[i].active) continue;
 				S2GUI.ActiveElements[i].Update();
+			}
+
+            for (int i = 0; i < InvalidComponents.Count; i++)
+            {
+				
+
 			}
 		}
 	}
