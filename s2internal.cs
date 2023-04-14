@@ -65,14 +65,10 @@ namespace S2DCore
 		{
 			if (context == null)
 			{
-
-
-
 				context = new();
 				context.MainWindow = new(new VideoMode(640, 480),
 					"game", Styles.Default);
 				
-
 				return true;
 			}
 
@@ -87,6 +83,12 @@ namespace S2DCore
 
 	public static class Extensions
 	{
+		public static void Clamp(this float f, float min, float max)
+        {
+			if (f > max) f = max; return;
+			if (f < min) f = min; return;
+        }
+
 		public static void AddOnce<T>(this List<T> to, T what)
 		{
 			if (!to.Contains(what)) to.Add(what);
@@ -126,7 +128,7 @@ namespace S2DCore
 			get
 			{
 				return 
-					(Vector2f)Center + new Vector2f(0, MainWindow.GetView().Viewport.Top/2);
+					(Vector2f)new Vector2f(Center.x, MainWindow.GetView().Viewport.Top * 0.25f);
 			}
 		}
 
@@ -246,6 +248,21 @@ namespace S2DCore
 		public static List<SceneInstance> ActiveLevels = new();
 		public static SceneInstance CurrentScene;
 		public static SceneInstance DestroyedObjectLevel;
+
+		public bool Loaded(Scene scene)
+        {
+			bool b = false;
+            for (int i = 0; i < ActiveLevels.Count; i++)
+            {
+				if (ActiveLevels[i].instanceOf == scene)
+                {
+					b = true;
+					break;
+                }
+            }
+
+			return b;
+        }
 	}
 
 	public static class S2Random
@@ -293,6 +310,7 @@ namespace S2DCore
 		public Vector2 offset;
 		public Texture spriteTexture;
 		public Sprite sprite;
+		public Color color = Color.white;
 
 		public S2Sprite(string path, int id)
 		{
@@ -328,14 +346,92 @@ namespace S2DCore
 
 		public void Draw()
 		{
+			sprite.Color = color;
 			Internal.context.MainWindow.Draw(sprite);
 		}
 	}
 
-	public struct Color
+	public struct DrawCall
+    {
+		public int priority;
+		public Drawable drawable;
+
+        public DrawCall(int priority, Drawable drawable)
+        {
+            this.priority = priority;
+            this.drawable = drawable;
+        }
+    }
+
+    //made specifically to allow ordered rendering
+    public class Renderer
+    {
+		public static List<DrawCall> DrawCalls = new();
+
+		public static bool ListContains(Drawable d)
+        {
+			bool r = false;
+
+            for (int i = 0; i < DrawCalls.Count; i++)
+            {
+				if (DrawCalls[i].drawable == d)
+                {
+					r = true;
+					break;
+                }
+            }
+
+			return r;
+        }
+
+		public static void Draw(Drawable d, int order = -1)
+        {
+			if (order != -1)
+            {
+				if(!ListContains(d))DrawCalls.Insert(order, new(order, d));
+			}
+			else
+            {
+				DrawCalls.Add(new(DrawCalls.Count, d));
+            }
+        }
+
+		public static void Draw(S2Sprite d, int order = -1)
+        {
+			Draw(d.sprite, order);
+        }
+
+
+
+		public static void RenderAll()
+        {
+			DrawCalls.Sort(compareCalls);
+            for (int i = 0; i < DrawCalls.Count; i++)
+            {
+				Internal.context.MainWindow.Draw(DrawCalls[i].drawable);
+				DrawCalls.RemoveAt(i);
+            }
+        }
+
+        private static int compareCalls(DrawCall a, DrawCall b)
+        {
+			if (a.priority > b.priority) return 1;
+			if (a.priority < b.priority) return -1;
+			return 0;
+		}
+    }
+
+    public struct Color
 	{
 		public float
 			r, g, b, a;
+
+		public static Color white =		new(1, 1, 1, 1);
+		public static Color clear =		new(0, 0, 0, 0);
+		public static Color semiclear =		new(1, 1, 1, 0.5f);
+		public static Color red =			new(1, 0, 0, 1);
+		public static Color green =		new(0, 1, 0, 1);
+		public static Color blue =		new(0, 0, 1, 1);
 
 		#region Constructors
 		public Color(float r, float g, float b, float a)
@@ -1068,7 +1164,7 @@ namespace S2DCore
 
 		public void Destroy()
 		{
-
+			throw new System.NotImplementedException();
 		}
 
 		public static bool operator true(Actor a)
@@ -1100,6 +1196,7 @@ namespace S2DCore
 				Internal.Log("Cannot add a component to a null Actor");
 				return null;
 			}
+
 			T cmp = new();
 			cmp.actor = to;
 			cmp.actor.components.AddOnce(cmp);
@@ -1241,6 +1338,8 @@ namespace S2DCore
 				if (!S2GUI.ActiveElements[i].active) continue;
 				S2GUI.ActiveElements[i].Update();
 			}
+
+			Renderer.RenderAll();
 
             for (int i = 0; i < InvalidComponents.Count; i++)
             {

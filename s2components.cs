@@ -141,6 +141,7 @@ namespace S2DComponents
 
 	public class SpriteRenderer : Component
     {
+		public float Depth = 1;
 		public S2Sprite sprite;
 		public DrawMode drawMode = DrawMode.WhenLevelActive;
 
@@ -151,12 +152,14 @@ namespace S2DComponents
 
         public override void Update()
         {
+			Depth.Clamp(0.1f, float.MaxValue);
 			if (sprite == null) return;
 
-			sprite.SetPosition(actor.position);
+			sprite.SetPosition(actor.position * (1 / Depth));
 			sprite.SetRotation(actor.rotation);
 			sprite.SetScale(actor.scale);
-			sprite.Draw();
+
+			Renderer.Draw(sprite);
         }
     }
 }

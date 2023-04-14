@@ -7,6 +7,7 @@ using SFML.Audio;
 using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
+using Color = S2DCore.Color;
 
 class S2GameEntry
 {
@@ -67,25 +68,40 @@ class S2GameEntry
 
         Actor actor = Actor.Create(Vector2.zero, Vector2.one);
         actor.name = "Test Subject";
-        actor.AddComponent<InheritanceTestB>();
-
         SpriteRenderer sr = Component.Add<SpriteRenderer>(actor);
+        sr.sprite = TextureManager.CreateSprite("squareSmall.png");
+
+        Actor actor2 = Actor.Create(Vector2.one, Vector2.one);
+        actor2.name = "Test Subject 2";
+        SpriteRenderer sr2 = Component.Add<SpriteRenderer>(actor2);
+        sr2.sprite = TextureManager.CreateSprite("squareSmall.png");
+
+
+
+        actor.AddComponent<InheritanceTestB>();
         //sr.sprite = new S2Sprite(Internal.GetCWD() + Constants.TexturesPath + "squareSmall.png", 2);
 
-        sr.sprite = TextureManager.CreateSprite("squareSmall.png");
 
         S2GUI.Panel panel = new(50, 50);
 
         RunSerializationTest();
         while (Internal.context.MainWindow.IsOpen)
-        { 
-            Internal.context.MainWindow.SetView(Internal.calcView((Vector2f)Internal.context.MainWindow.Size, 0, 1));
+        {
+            //Internal.context.MainWindow.SetView(Internal.calcView((Vector2f)Internal.context.MainWindow.Size, 1, 1));
+            Internal.context.MainWindow.SetView(new
+                View(Internal.context.MainWindow.GetView().Center,
+                new Vector2f(Internal.context.MainWindow.Size.X, Internal.context.MainWindow.Size.Y)));
+            
             Internal.context.MainWindow.DispatchEvents();
              
             actor.position = Internal.context.MainWindow.DefaultView.Center;
             Internal.context.MainWindow.Clear();
             actor.scale = new Vector2(1, 1);
+
+            sr2.sprite.color = Color.red;
+
             actor.position = Internal.context.MainWindow.GetView().Center;
+            actor2.position = Internal.context.MainWindow.GetView().Center * 1.12f;
 
             UpdateManager.UpdateEngine();
 
