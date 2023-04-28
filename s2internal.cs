@@ -8,11 +8,13 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-	using SFML;
-	using SFML.Audio;
-	using SFML.Graphics;
-	using SFML.System;
-	using SFML.Window;
+using SFML;
+using SFML.Audio;
+using SFML.Graphics;
+using SFML.System;
+using SFML.Window;
+using SFML.Graphics.Glsl;
+
 
 using Box2DX;
 using Box2DX.Collision;
@@ -30,6 +32,7 @@ namespace S2DCore
 
 		public static void Log(object v)
 		{
+			
 			Console.WriteLine(v);
 		}
 
@@ -528,6 +531,185 @@ namespace S2DCore
 		#endregion
 	}
 
+	public struct Vector3
+	{
+		public float x, y, z;
+		public static Vector3 zero = new Vector3(0);
+		public static Vector3 one = new Vector3(1, 1, 1);
+
+		static float sqrt(float num)
+		{
+			return (float)Math.Sqrt((double)num);
+		}
+
+		static float pow(float num, float num2)
+		{
+			return (float)Math.Pow((double)num, (double)num2);
+		}
+
+		public override string ToString()
+		{
+			return "(" + x.ToString() + ", " + y.ToString() + ", " + z.ToString() + ")";
+		}
+
+		public static Vector3 Random(float limit)
+		{
+			return new Vector3(S2Random.Range(-limit, limit), S2Random.Range(-limit, limit));
+		}
+
+		public static Vector3 Parse(string from)
+		{
+			Vector3 result = new();
+			string[] split = from.Split('(', ' ', ',', ')');
+
+			result.x = (float)double.Parse(split[1]);
+			result.y = (float)double.Parse(split[split.Length - 2]);
+
+			return result;
+		}
+
+		#region Class Methods
+		static float Distance(Vector3 a, Vector3 b)
+		{
+			return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2) + pow(a.z - b.z, 2));
+		}
+
+		float Distance(Vector3 b)
+		{
+			return sqrt(pow(this.x - b.x, 2) + pow(this.y - b.y, 2) + pow(this.z - b.z, 2));
+		}
+
+		void Zero()
+		{
+			x = 0;
+			y = 0;
+			z = 0;
+		}
+
+		#endregion
+
+		#region Casts
+		public static implicit operator Vector3(Box2DX.Common.Vec3 v)
+		{
+			return new Vector3(v.X, v.Y, v.Z);
+		}
+
+		public static implicit operator Vector3(SFML.Graphics.Glsl.Vec3 v)
+		{
+			return new Vector3(v.X, v.Y, v.Z);
+		}
+
+
+
+		public static implicit operator Vector3(Vector3f v)
+		{
+			return new Vector3(v.X, v.Y, v.Z);
+		}
+
+
+		public static implicit operator Box2DX.Common.Vec3(Vector3 v)
+		{
+			return new Box2DX.Common.Vec3(v.x, v.y, v.z);
+		}
+
+		public static implicit operator SFML.Graphics.Glsl.Vec3(Vector3 v)
+		{
+			return new SFML.Graphics.Glsl.Vec3(v.x, v.y, v.z);
+		}
+
+		public static implicit operator Vector3f(Vector3 v)
+		{
+			return new Vector3f(v.x, v.y, v.z);
+		}
+		#endregion
+
+		#region Constructors
+		public Vector3(float x = 0, float y = 0, float z = 0)
+		{
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+
+		public Vector3(Vector3 d)
+		{
+			this.x = d.x;
+			this.y = d.y;
+			this.z = d.z;
+		}
+
+		public Vector3(Vector3f d)
+		{
+			this.x = d.X;
+			this.y = d.Y;
+			this.z = d.Z;
+		}
+
+		public Vector3(Box2DX.Common.Vec3 d)
+		{
+			this.x = d.X;
+			this.y = d.Y;
+			this.z = d.Z;
+		}
+
+		public Vector3(SFML.Graphics.Glsl.Vec3 d)
+		{
+			this.x = d.X;
+			this.y = d.Y;
+			this.z = d.Z;
+		}
+
+		#endregion
+
+		#region Operators
+		public static Vector3 operator *(Vector3 f, float n)
+		{
+			Vector3 r = new Vector3(f.x, f.y, f.z);
+			r.x *= n;
+			r.y *= n;
+			r.z *= n;
+			return r;
+		}
+
+		public static Vector3 operator /(Vector3 f, float n)
+		{
+			Vector3 r = new Vector3(f.x, f.y, f.z);
+			r.x /= n;
+			r.y /= n;
+			r.z /= n;
+			return r;
+		}
+
+		public static Vector3 operator +(Vector3 n, Vector3 t)
+		{
+			Vector3 r = new Vector3(n.x, n.y, n.z);
+			r.x += t.x;
+			r.y += t.y;
+			r.z += t.z;
+			return r;
+		}
+
+		public static Vector3 operator -(Vector3 n, Vector3 t)
+		{
+			Vector3 r = new Vector3(n.x, n.y, n.z);
+			r.x -= t.x;
+			r.y -= t.y;
+			r.z -= t.z;
+			return r;
+		}
+
+		public static Vector3 operator *(Vector3 n, Vector3 t)
+		{
+			Vector3 r = new Vector3(n.x, n.y, n.z);
+			r.x *= t.x;
+			r.y *= t.y;
+			r.z *= t.z;
+			return r;
+		}
+		#endregion
+	}
+
+
 	public struct Vector2
 	{
 		public float x, y;
@@ -588,7 +770,7 @@ namespace S2DCore
 		#endregion
 
 		#region Casts
-		public static implicit operator Vector2(Vec2 v)
+		public static implicit operator Vector2(Box2DX.Common.Vec2 v)
 		{
 			return new Vector2(v.X, v.Y);
 		}
@@ -599,10 +781,17 @@ namespace S2DCore
 		}
 
 
-		public static implicit operator Vec2(Vector2 v)
+		public static implicit operator Box2DX.Common.Vec2(Vector2 v)
 		{
-			return new Vec2(v.x, v.y);
+			return new Box2DX.Common.Vec2(v.x, v.y);
 		}
+
+		public static implicit operator SFML.Graphics.Glsl.Vec2(Vector2 v)
+		{
+			return new SFML.Graphics.Glsl.Vec2(v.x, v.y);
+		}
+
+
 
 		public static implicit operator Vector2f(Vector2 v)
 		{
@@ -629,11 +818,20 @@ namespace S2DCore
 			this.y = d.Y;
 		}
 
-		public Vector2(Vec2 d)
+		public Vector2(Box2DX.Common.Vec2 d)
 		{
 			this.x = d.X;
 			this.y = d.Y;
 		}
+
+		public Vector2(SFML.Graphics.Glsl.Vec2 d)
+		{
+			this.x = d.X;
+			this.y = d.Y;
+		}
+
+
+
 		#endregion
 
 		#region Operators
@@ -1089,6 +1287,14 @@ namespace S2DCore
 
 			GC.Collect();
 			nop();
+		}
+	}
+
+	public class VertexBuffer
+	{
+		public VertexBuffer()
+		{
+			
 		}
 	}
 
