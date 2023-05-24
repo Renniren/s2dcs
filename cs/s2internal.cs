@@ -32,7 +32,7 @@ namespace S2DCore
 
 		public static void Log(object v)
 		{
-			
+				
 			Console.WriteLine(v);
 		}
 
@@ -40,6 +40,18 @@ namespace S2DCore
 		{
 			return System.IO.Directory.GetCurrentDirectory();
 		}
+
+		public static bool InitializeEngine()
+        {
+			CreateContext();
+			Time.Initialize();
+			context.MainWindow.Closed += (sender, e) =>
+			{
+				Internal.context.MainWindow.Close();
+			};
+
+			return true;
+        }
 
 		public static View calcView(Vector2f windowSize, float minRatio, float maxRatio)
 		{
@@ -599,13 +611,30 @@ namespace S2DCore
 			return new Vector3(v.X, v.Y, v.Z);
 		}
 
-
+		public static implicit operator Vector3(Vector2f v)
+		{
+			return new Vector3(v.X, v.Y, 0);
+		}
 
 		public static implicit operator Vector3(Vector3f v)
 		{
 			return new Vector3(v.X, v.Y, v.Z);
 		}
 
+		public static implicit operator Vector3(Vector2 v)
+		{
+			return new Vector3(v.y, v.y, 0);
+		}
+
+		public static implicit operator Vector3(int v)
+		{
+			return new Vector3(v, v, v);
+		}
+
+		public static implicit operator Vector3(float v)
+		{
+			return new Vector3(v, v, v);
+		}
 
 		public static implicit operator Box2DX.Common.Vec3(Vector3 v)
 		{
@@ -706,6 +735,8 @@ namespace S2DCore
 			r.z *= t.z;
 			return r;
 		}
+
+
 		#endregion
 	}
 
@@ -779,6 +810,13 @@ namespace S2DCore
 		{
 			return new Vector2(v.X, v.Y);
 		}
+
+		public static implicit operator Vector2(Vector3 v)
+		{
+			return new Vector2(v.x, v.y);
+		}
+
+
 
 
 		public static implicit operator Box2DX.Common.Vec2(Vector2 v)
@@ -1130,6 +1168,8 @@ namespace S2DCore
 			bool inActorDefinition = false;
 			bool inActorNameDefinition = false;
 			bool inComponentDefinition = false;
+			bool inComponentFieldDefinition = false;
+			bool inComponentStringDefinition = false;
 
 			bool position = false, 
 				scale = false, 
@@ -1140,7 +1180,8 @@ namespace S2DCore
 				"component",
 				};
 
-			Type newType;
+			Type newType = null;
+			Component newComponent = null;
 
 			void resetActor()
 			{
@@ -1151,13 +1192,15 @@ namespace S2DCore
 			Scene reconstructedScene = new();
 
 			//really awful spaghetti deserialization code with silly hacks
-			for (int i = 0; i < filesplit.Length; i++)
+			for (int i = 1; i < filesplit.Length; i++) //it's safe enough to start from i = 1 instead of 0 since that's literally just the filename
 			{
 				string item = filesplit[i];
 				int next = i + 1;
+				int last = i - 1;
 				next = Math.Clamp(next, 0, filesplit.Length - 1);
 				string item_next = filesplit[next];
-
+				string item_last = filesplit[i - 1];
+				
 				if (item.Contains(keywords[0]))
 				{
 					inActorDefinition = true;
@@ -1229,21 +1272,21 @@ namespace S2DCore
 					if (position)
 					{
 						string pos_string = item + item_next;
-						Vector2 parsed = Vector2.Parse(pos_string);
+						Vector2 parsed = Vector3.Parse(pos_string);
 						new_actor.position = parsed;
 						position = false;
 					}
 
 					if (rotation)
 					{
-						new_actor.rotation = float.Parse(item);
+						new_actor.rotation = Vector3.Parse(item);
 						rotation = false;
 					}
 					
 					if (scale)
 					{
 						string pos_string = item + item_next;
-						Vector2 parsed = Vector2.Parse(pos_string);
+						Vector3 parsed = Vector3.Parse(pos_string);
 						new_actor.scale = parsed;
 						scale = false;
 					}
@@ -1263,7 +1306,7 @@ namespace S2DCore
 				if (item.Contains(keywords[1]))
 				{
 					newType = Type.GetType(item_next);
-					if(newType != null)Activator.CreateInstance(newType);
+					if(newType != null)newComponent = Activator.CreateInstance(newType) as Component;
 					continue;
 				}
 
@@ -1276,11 +1319,26 @@ namespace S2DCore
 				if (inComponentDefinition)
 				{
 					Type field_type = Type.GetType(item);
-					if (field_type != null)
+					if (newComponent != null)
 					{
-						
+						if (newComponent.GetType().GetField(item) != null)
+						{
+							inComponentFieldDefinition = true;
+							if (field_type == typeof(string) || field_type == typeof(System.String)) inComponentStringDefinition = true;
+							continue;
+						}
 					}
 				}
+
+				if (inComponentStringDefinition)
+                {
+					if (item_next == "\"")
+                    {
+						inComponentStringDefinition = false;
+						continue;
+                    }
+					contents.Add(item);
+                }
 			}
 
 			reconstructedScene.actors = actors;
@@ -1292,6 +1350,7 @@ namespace S2DCore
 
 	public class VertexBuffer
 	{
+		public Vector3[] data;
 		public VertexBuffer()
 		{
 			
@@ -1304,10 +1363,10 @@ namespace S2DCore
 		public Actor parent = null;
 		public bool active;
 		public string name = "New Actor";
-		public Vector2 
-			position, scale = Vector2.one;
+		public Vector3
+			position, scale = Vector3.one;
 
-		public float rotation = 0;
+		public Vector3 rotation = Vector3.zero;
 		public int instanceID;
 		public SceneInstance scene;
 		public UpdateMode updateMode = UpdateMode.WhenLevelActive;
@@ -1317,7 +1376,7 @@ namespace S2DCore
 		public List<Component> components = new();
 
 
-		public static Actor Create(Vector2 position, Vector2 scale, string name = "new Actor", float rotation = 0)
+		public static Actor Create(Vector3 position, Vector3 scale, Vector3 rotation, string name = "new Actor")
 		{
 			Actor actor = new();
 			actor.active = true;
@@ -1333,21 +1392,31 @@ namespace S2DCore
 		public static Actor Copy(Actor a)
 		{
 			Actor clone = new Actor();
-			clone.position = a.position;
-			clone.rotation = a.rotation;
-			clone.scale = a.scale;
+            /*			clone.position = a.position;
+                        clone.rotation = a.rotation;
+                        clone.scale = a.scale;
 
-			clone.components = a.components;
-			clone.Tags = a.Tags;
-			
-			clone.instanceID = a.instanceID;
-			clone.layer = a.layer;
-			
-			clone.active = a.active;
-			clone.name = a.name;
+                        clone.components = a.components;
+                        clone.Tags = a.Tags;
 
-			clone.SetScene(a.scene);
-			clone.updateMode = a.updateMode;
+                        clone.instanceID = a.instanceID;
+                        clone.layer = a.layer;
+
+                        clone.active = a.active;
+                        clone.name = a.name;
+
+                        clone.SetScene(a.scene);
+                        clone.updateMode = a.updateMode;
+            */
+            foreach (var field in clone.GetType().GetFields())
+            {
+				clone.GetType()
+					.GetField(field.Name)
+					.SetValue(clone, 
+					a.GetType()
+					.GetField(field.Name)
+					.GetValue(a));
+            }
 
 			return clone;
 		}
@@ -1499,7 +1568,52 @@ namespace S2DCore
 		#endregion
 	}
 
-	public static class UpdateManager
+	public class Time
+    {
+		public static float deltaTime, deltaTimeUnscaled, physicsDelta;
+		public static float Timescale;
+		public static float Current;
+		
+		public static Time Instance { get; private set; }
+		protected SFML.System.Time timer;
+		static float last;
+		
+		protected Time()
+        {
+
+        }
+		
+		static bool initialized;
+		public static void Initialize()
+        {
+			if (initialized) return;
+
+			Time tm = new();
+			tm.timer = new();
+			Instance = tm;
+			initialized = true;
+        }
+
+		public void update()
+        {
+			Current = timer.AsSeconds();
+			deltaTime = Current - last;
+			deltaTimeUnscaled = deltaTime;
+
+			deltaTime /= 1000;
+			deltaTimeUnscaled /= 1000;
+
+			deltaTime *= Timescale;
+			last = Current;
+		}
+
+		public static void Update()
+        {
+			Instance.update();
+        }
+    }
+
+    public static class UpdateManager
 	{
 		public static List<Component> InvalidComponents = new();
 		public static List<Component> ActiveComponents = new();
@@ -1507,6 +1621,7 @@ namespace S2DCore
 
 		public static void UpdateEngine()
 		{
+			Time.Update();
 			Component cmp = null;
 			for (int i = 0; i < ActiveComponents.Count; i++)
 			{
@@ -1514,7 +1629,9 @@ namespace S2DCore
 				if (cmp == null) continue;
 				if (cmp.actor == null)
                 {
+					Internal.Log("Component with ID " + cmp.instanceID + " does not have an Actor.");
 					InvalidComponents.AddOnce(cmp);
+					ActiveComponents.RemoveAt(i);
 					continue;
                 }
 

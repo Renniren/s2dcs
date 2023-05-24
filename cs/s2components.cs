@@ -139,7 +139,12 @@ namespace S2DComponents
 		}
 	}
 
-	public class SpriteRenderer : Component
+	public class MeshRenderer : Component
+    {
+
+    }
+
+    public class SpriteRenderer : Component
     {
 		public float Depth = 1;
 		public S2Sprite sprite;
@@ -156,7 +161,7 @@ namespace S2DComponents
 			if (sprite == null) return;
 
 			sprite.SetPosition(actor.position * (1 / Depth));
-			sprite.SetRotation(actor.rotation);
+			sprite.SetRotation(actor.rotation.z);
 			sprite.SetScale(actor.scale);
 
 			Renderer.Draw(sprite);

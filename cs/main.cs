@@ -24,8 +24,8 @@ class S2GameEntry
 
             for (int i = 1; i <= 64; i++)
             {
-                Actor a = Actor.Create(Vector2.Random(50.0f), Vector2.one, "newActor " + i.ToString(), 
-                    S2Random.Range(-180f, 180f));
+                Actor a = Actor.Create(Vector2.Random(50.0f), Vector2.one, Vector3.zero,
+                    "newActor " + i.ToString());
 
                 a.scene = new(serializetest);
 
@@ -56,22 +56,17 @@ class S2GameEntry
         
         Console.WriteLine(Internal.GetCWD());
         Console.WriteLine("Hello World!");
+        Internal.InitializeEngine();
 
         string vector = "(403.1337, 6094492.30)";
         Vector2 r = Vector2.Parse(vector);
 
-        Internal.CreateContext();
-        Internal.context.MainWindow.Closed += (sender, e) =>
-        {
-            Internal.context.MainWindow.Close();
-        };
-
-        Actor actor = Actor.Create(Vector2.zero, Vector2.one);
+        Actor actor = Actor.Create(Vector2.zero, Vector3.one, Vector2.zero);
         actor.name = "Test Subject";
         SpriteRenderer sr = Component.Add<SpriteRenderer>(actor);
         sr.sprite = TextureManager.CreateSprite("squareSmall.png");
 
-        Actor actor2 = Actor.Create(Vector2.one, Vector2.one);
+        Actor actor2 = Actor.Create(Vector2.one, Vector2.one, Vector2.zero);
         actor2.name = "Test Subject 2";
         SpriteRenderer sr2 = Component.Add<SpriteRenderer>(actor2);
         sr2.sprite = TextureManager.CreateSprite("squareSmall.png");
