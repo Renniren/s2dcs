@@ -940,6 +940,205 @@ namespace S2DCore
 		static string filename;
 		static string ext = ".s2";
 
+		static string PARSER_QUOTE = "P_QUOTE";
+
+		class serialize_rec_test_b
+        {
+			string myValue;
+
+			public void init()
+            {
+				myValue = "this is a class";
+            }
+        }
+
+		struct serialize_rec_test_a
+        {
+			string myValue;
+
+			public void init()
+            {
+				myValue = "this is a struct";
+            }
+        }
+
+
+
+        public class serialize_rec_test
+        {
+			serialize_rec_test_b funny_class;
+			serialize_rec_test_a funny_struct;
+			bool funny;
+			int funny_number;
+			string funny_str;
+			int[] funny_arr;
+			List<int> funny_list;
+
+			public void init()
+			{
+				funny_str = "this class has classes in it";
+				funny = false;
+				funny_number = 69;
+				funny_arr = new int[]{
+					4, 2, 0, 6, 9,
+                };
+				funny_list = new();
+				funny_list.Add(1);
+				funny_list.Add(3);
+				funny_list.Add(3);
+				funny_list.Add(7);
+
+				funny_class = new();
+				funny_class.init();
+				funny_struct = new();
+				funny_struct.init();
+			}
+		}
+
+		public static string SerializeObject(object obj, string ref_name, int depth = 0)
+        {
+			if (obj == null)
+            {
+				log("Cannot serialize a null object.");
+				return "";
+            }
+
+			//iterate through every field in the object
+			string result = "";
+			string tabs = ""; //add tabs according to "depth" in the object
+            for (int i = 0; i <= depth; i++)
+            {
+
+				tabs += "\t";
+            }
+
+			void add(string v)
+			{
+				result += tabs + "\n" + v;
+			}
+
+			void log(object j)
+			{
+				Console.WriteLine(j);
+			}
+
+			void nop() { };
+
+			result += obj.GetType().Name + " " + ref_name + '\n' + tabs + "{";
+
+            foreach (var field in obj.GetType().GetRuntimeFields())
+            {
+				if (field.IsStatic) continue;
+
+				bool isStruct =
+						field.FieldType.IsValueType &&
+						!field.FieldType.IsEnum &&
+						!field.FieldType.IsClass &&
+						!field.FieldType.IsPrimitive;
+				
+				bool isString = field.FieldType == typeof(string);
+				bool isArray = field.FieldType.IsArray;
+				bool isClass = field.FieldType.IsClass;
+
+				if(!isStruct && !isArray && !isClass)add(tabs + field.FieldType + " " + field.Name + " = " + field.GetValue(obj));
+
+				if (isStruct)
+                {
+					add(tabs + SerializeObject(field.GetValue(obj), field.Name, depth + 1));
+                }
+
+				if (isClass && !isString)
+                {
+					add(tabs + SerializeObject(field.GetValue(obj), field.Name, depth + 1));
+                }
+
+				if (isString)
+                {
+					string final = "";
+					add(tabs + field.FieldType + " " + field.Name + " = \"" + field.GetValue(obj) + "\"");
+				}
+
+				if (isArray)
+                {
+					add("\t" + field.FieldType + " " + field.Name + " = [");
+					object field_arr_conv = field.GetValue(obj);
+
+					//check if it can be converted to both an array or list
+					if (field_arr_conv as Array != null) field_arr_conv = field_arr_conv as Array;
+					//if (field_arr_conv as List<object> != null) field_arr_conv = field_arr_conv as List<object>;
+					foreach (object item in field.GetValue(obj) as Array) // I fucking hate this
+                    {
+						isStruct =
+								item.GetType().IsValueType &&
+								!item.GetType().IsEnum &&
+								!item.GetType().IsClass &&
+								!item.GetType().IsPrimitive;
+
+						isString = item.GetType() == typeof(string);
+						isArray = item.GetType().IsArray;
+						isClass = item.GetType().IsClass;
+
+						if (!isStruct && !isArray && !isClass) add("\t\t" + item + ",");
+					}
+					add("\t]");
+				}
+            }
+
+			result += "\n}";
+
+            //prettyprint
+
+
+			
+            if (depth == 0)
+            {
+				var conv = result.ToList();
+                bool found_brace = false; //because we don't want the first brace to be indented
+				int iterations = conv.Count;  //cache list size beforehand because this can change in the loop
+				string final_str = ""; 
+
+				void str_update()
+                {
+					final_str = "";
+					for (int i = 0; i < conv.Count; i++)
+					{
+						final_str += conv[i];
+					}
+				}
+
+				for (int i = 0; i < iterations; i++)
+                {
+                    bool opening_brace = conv[i] == '{';
+                    bool closing_brace = conv[i] == '}';
+
+                    if (!found_brace)
+                    {
+                        found_brace = opening_brace;
+                    }
+                    else
+                    {
+                        if (opening_brace && conv[i - 1] == '\n')
+                        {
+							conv.Insert(i, '\t');
+							str_update();
+                        }
+
+                        if (closing_brace && conv[i - 1] == '\n')
+                        {
+							conv.Insert(i, '\t');
+							str_update();
+						}
+                    }
+                }
+				
+				return final_str;
+            }
+
+
+            nop();
+			return tabs + result;
+        }
+
 		public static void SerializeScene(Scene scene)
 		{
 			string result = scene.name + ":\n";
@@ -1013,21 +1212,20 @@ namespace S2DCore
 				result += SCOPE_END + "\n";
 			}
 
-			result += "\nCOMPONENTS:\n";
+			result += "\nCOMPONENTS:\n\n";
 			Component cmp;
 
 			for (int i = 0; i < actor_components.Count; i++)
 			{
 				cmp = actor_components[i];
-				result += "component " + cmp.GetType().FullName + "";
-				result += SCOPE_BEGIN;
+				result += SerializeObject(cmp, "ActorComponent") + "\n";
 
 				//because obviously it should be a component, so it'll have an actor
 				//which means we can simply use the actor's ID as the actor it belongs to, and if the
 				//field is a component (which it SHOULD be), we can use that component's instance ID, which
 				//we can use to link together components and actors in deserialization
 
-				foreach (var field in cmp.GetType().GetRuntimeFields())
+				/*foreach (var field in cmp.GetType().GetRuntimeFields())
 				{
 					//compare both the base and normal types to Actor and Component, 
 					//because the field may just be a bare Component or Actor
@@ -1066,7 +1264,6 @@ namespace S2DCore
 					}
 
 					//I don't know what'll happen if there's a struct IN the struct but we'll figure that out too I guess
-					//perhaps we'll have to use recursion for that
 					if (isStruct)
 					{
 						result += "\n\t" + field.FieldType.FullName + " " + field.Name + " {";
@@ -1107,9 +1304,9 @@ namespace S2DCore
 					{
 						add("\t" + field.FieldType.Name + " " + field.Name + " " + field.GetValue(cmp));
 					}
-				}
+				}*/
 
-				result += SCOPE_END + "\n\n";
+				result += "\n\n";
 			}
 
 			string path = Internal.GetCWD() +
@@ -1168,6 +1365,7 @@ namespace S2DCore
 			bool inActorDefinition = false;
 			bool inActorNameDefinition = false;
 			bool inComponentDefinition = false;
+			bool inComponentsDefinition = false;
 			bool inComponentFieldDefinition = false;
 			bool inComponentStringDefinition = false;
 
@@ -1180,8 +1378,10 @@ namespace S2DCore
 				"component",
 				};
 
+			string current_field = "";
+
 			Type newType = null;
-			Component newComponent = null;
+			object newComponent = null;
 
 			void resetActor()
 			{
@@ -1301,6 +1501,7 @@ namespace S2DCore
 				{
 					inActorDefinition = false;
 					inActorNameDefinition = false;
+					inComponentsDefinition = true;
 				}
 
 				if (item.Contains(keywords[1]))
@@ -1319,25 +1520,52 @@ namespace S2DCore
 				if (inComponentDefinition)
 				{
 					Type field_type = Type.GetType(item);
+					if (item.StartsWith('\"'))
+					{
+						inComponentStringDefinition = true;
+					}
+
 					if (newComponent != null)
 					{
 						if (newComponent.GetType().GetField(item) != null)
 						{
+							current_field = item;
 							inComponentFieldDefinition = true;
-							if (field_type == typeof(string) || field_type == typeof(System.String)) inComponentStringDefinition = true;
-							continue;
+							if (field_type == typeof(string) || field_type == typeof(System.String))
+                            {
+								inComponentStringDefinition = true;
+								nop();
+                            }
 						}
 					}
 				}
 
 				if (inComponentStringDefinition)
                 {
-					if (item_next == "\"")
+					nop();
+					string str_field = "";
+					char chr;
+                    for (int b = 1; b < item.Length; b++)
                     {
-						inComponentStringDefinition = false;
-						continue;
-                    }
-					contents.Add(item);
+						chr = item[b];
+						if (chr != '\"') str_field += chr;
+						if (b == item.Length - 1)
+						{
+							if (newComponent != null)
+							{
+								if (newComponent.GetType().GetField(current_field) != null) emit("found field with name " + current_field + " and assigned value " + str_field);
+								newComponent.GetType().GetField(current_field).SetValue(newComponent, str_field);
+							}
+
+							inComponentStringDefinition = false;
+							//break;
+							//I don't know if this breaks out of both this loop and the one all this is in so I'll do this instead
+							goto confuse;
+						}
+					}
+
+					confuse:
+					continue;
                 }
 			}
 

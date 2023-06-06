@@ -14,15 +14,21 @@ class S2GameEntry
 
     static void Main(string[] args)
     {
+        void nop() { };
         void RunSerializationTest()
 	    {
+            S2DSerializer.serialize_rec_test s = new();
+            s.init();
+            string serialize_result = S2DSerializer.SerializeObject(s, nameof(s));
+            nop();
+
             Scene serializetest = new();
 
             serializetest.name = "TestScene";
             serializetest.world = new();
             serializetest.world.backgroundColor = new S2DCore.Color(0.5f, 0, 0, 1);
 
-            for (int i = 1; i <= 64; i++)
+            for (int i = 1; i <= 4; i++)
             {
                 Actor a = Actor.Create(Vector2.Random(50.0f), Vector2.one, Vector3.zero,
                     "newActor " + i.ToString());

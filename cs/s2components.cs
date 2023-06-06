@@ -76,6 +76,16 @@ namespace S2DComponents
 		public string myString;
     }
 
+	public struct testStruct2
+    {
+		public int mySuperFunnyValue;
+		public float myOtherFunnyValue;
+		public string myString;
+		public testStruct ImpendingDisaster;
+    }
+
+
+
 	public class testClass
 	{
 		public int shit = -1;
@@ -83,7 +93,7 @@ namespace S2DComponents
 
 	public class StructSerializationTestA : Component
     {
-		public testStruct test;
+		public testStruct2 test;
 		public testClass tc;
 		public Vector2 vector;
 
